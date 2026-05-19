@@ -26,6 +26,9 @@ stitch/
 # Claude Code local config (permission grants, may include keys)
 .claude/
 
+# Original brand assets (versiones servidas viven en public/ si se usan)
+assets/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
