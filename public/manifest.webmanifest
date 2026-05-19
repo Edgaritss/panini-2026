@@ -1,19 +1,31 @@
 {
-  "name": "Panini · Mundial 2026",
-  "short_name": "Panini 2026",
-  "description": "Organizador personal de estampas del álbum FIFA World Cup 2026.",
+  "name": "Collect '26 · Tu álbum del Mundial 2026",
+  "short_name": "Collect '26",
+  "description": "Tu álbum del Mundial 2026, completo. Lleva el control de tus 980 estampas Panini desde cualquier dispositivo.",
   "lang": "es",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FAFAFA",
-  "theme_color": "#FAFAFA",
+  "background_color": "#0C0A09",
+  "theme_color": "#0C0A09",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/brand/logo.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/logo-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/favicon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

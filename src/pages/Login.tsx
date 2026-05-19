@@ -4,6 +4,7 @@ import { useAuth } from '../store/useAuth';
 import { AuthShell } from '../components/AuthShell';
 import { Modal } from '../components/Modal';
 import { Icon } from '../components/Icon';
+import { clearSplashShown } from '../components/LogoSplash';
 import { translateAuthError } from '../lib/authErrors';
 
 export function Login() {
@@ -25,6 +26,7 @@ export function Login() {
       setError(translateAuthError(err));
       return;
     }
+    clearSplashShown();
     navigate('/album', { replace: true });
   }
 
