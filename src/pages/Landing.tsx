@@ -170,24 +170,42 @@ export function Landing() {
         >
           Diseñado para coleccionistas
         </motion.h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <Feature
+            icon="bolt"
+            title="Empieza sin cuenta"
+            body="Marca estampas en segundos, sin registro. Cuando quieras llevar tu álbum a otro dispositivo, creas la cuenta y todo se migra automáticamente."
+            delay={0}
+          />
           <Feature
             icon="cloud_sync"
             title="Sincronización en tiempo real"
             body="Tu progreso te sigue. Marca una estampa en el celular en el camino y revísala en la computadora al llegar."
-            delay={0}
+            delay={0.05}
           />
           <Feature
-            icon="swap_horiz"
-            title="Intercambios sin enredos"
-            body="Exporta listas de faltantes y repetidas en Excel o cópialas como texto para mandar por WhatsApp."
+            icon="share"
+            title="Comparte tu álbum"
+            body="Genera un link público o uno colaborativo con PIN. Tus amigos ven tu colección o llenan estampas contigo, sin instalar nada."
             delay={0.1}
           />
           <Feature
-            icon="bar_chart"
-            title="Estadísticas y avance"
-            body="Mira qué selección llevas más completa, qué estampa te sale repetida más veces, tu porcentaje total."
+            icon="compare_arrows"
+            title="Match para intercambio"
+            body="Compara tu colección contra la de otro coleccionista y descubre al instante qué pueden cambiarse."
+            delay={0.15}
+          />
+          <Feature
+            icon="swap_horiz"
+            title="Listas para intercambio"
+            body="Exporta faltantes y repetidas en Excel o cópialas como texto para mandar por WhatsApp en un segundo."
             delay={0.2}
+          />
+          <Feature
+            icon="bar_chart"
+            title="Estadísticas y celebración"
+            body="Mira qué selección llevas más completa y festeja con confeti cuando termines un país."
+            delay={0.25}
           />
         </div>
       </section>
