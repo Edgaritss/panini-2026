@@ -40,6 +40,7 @@ interface AlbumState {
   firstAddedAt: number | null;
   localUpdatedAt: number;
   fullAlbumCelebratedAt: number | null;
+  lastAuthedUserId: string | null;
   sync: SyncState;
 
   increment: (id: string) => void;
@@ -63,6 +64,7 @@ interface AlbumState {
     firstAddedAt: number | null;
     fullAlbumCelebratedAt: number | null;
     remoteUpdatedAt: number;
+    userId: string;
   }) => void;
   markFullAlbumCelebrated: () => void;
 }
@@ -76,11 +78,12 @@ type Persisted = Pick<
   | 'firstAddedAt'
   | 'localUpdatedAt'
   | 'fullAlbumCelebratedAt'
+  | 'lastAuthedUserId'
 >;
 
 const persistOptions: PersistOptions<AlbumState, Persisted> = {
   name: 'panini-2026-album',
-  version: 4,
+  version: 5,
   partialize: (state) => ({
     counts: state.counts,
     theme: state.theme,
@@ -89,6 +92,7 @@ const persistOptions: PersistOptions<AlbumState, Persisted> = {
     firstAddedAt: state.firstAddedAt,
     localUpdatedAt: state.localUpdatedAt,
     fullAlbumCelebratedAt: state.fullAlbumCelebratedAt,
+    lastAuthedUserId: state.lastAuthedUserId,
   }),
   migrate: (persistedState, version) => {
     const s = (persistedState ?? {}) as Partial<Persisted> & {
@@ -101,6 +105,9 @@ const persistOptions: PersistOptions<AlbumState, Persisted> = {
     }
     if (version < 4) {
       if (s.fullAlbumCelebratedAt === undefined) s.fullAlbumCelebratedAt = null;
+    }
+    if (version < 5) {
+      if (s.lastAuthedUserId === undefined) s.lastAuthedUserId = null;
     }
     return s as Persisted;
   },
@@ -192,6 +199,7 @@ export const useAlbumStore = create<AlbumState>()(
       firstAddedAt: null,
       localUpdatedAt: 0,
       fullAlbumCelebratedAt: null,
+      lastAuthedUserId: null,
       sync: { status: 'initializing', lastSyncedAt: null, lastError: null },
 
       increment: (id) => {
@@ -308,12 +316,14 @@ export const useAlbumStore = create<AlbumState>()(
         firstAddedAt,
         fullAlbumCelebratedAt,
         remoteUpdatedAt,
+        userId,
       }) =>
         set((state) => ({
           counts,
           firstAddedAt,
           fullAlbumCelebratedAt,
           localUpdatedAt: remoteUpdatedAt,
+          lastAuthedUserId: userId,
           sync: {
             ...state.sync,
             status: 'idle',

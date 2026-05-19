@@ -1,6 +1,7 @@
 import { supabase, supabaseConfigured, type UserCollectionRow } from './supabase';
 import { useAlbumStore } from '../store/useAlbumStore';
 import { useAuth } from '../store/useAuth';
+import { useMigration } from '../store/useMigration';
 import type { SyncState } from '../types';
 
 const DEBOUNCE_MS = 600;
@@ -64,6 +65,22 @@ async function handleUserChange(userId: string | null): Promise<void> {
     window.clearTimeout(saveTimer);
     saveTimer = undefined;
   }
+
+  // If we're transitioning into an authed user AND the local state belongs to
+  // a different (or no) previous user, capture a snapshot so the user can
+  // decide whether to keep, merge, or discard those local counts.
+  if (userId) {
+    const album = useAlbumStore.getState();
+    const localHasData = Object.keys(album.counts).length > 0;
+    const ownsLocal = album.lastAuthedUserId === userId;
+    if (localHasData && !ownsLocal) {
+      useMigration.getState().capture({
+        counts: album.counts,
+        firstAddedAt: album.firstAddedAt,
+      });
+    }
+  }
+
   // Clear any in-memory data from a previous user without triggering a save.
   switching = true;
   useAlbumStore.setState({
@@ -125,6 +142,7 @@ async function hydrate(userId: string): Promise<void> {
     firstAddedAt: remoteFirstAdded,
     fullAlbumCelebratedAt: remoteFullCelebrated,
     remoteUpdatedAt,
+    userId,
   });
 }
 

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../store/useAuth';
+import { useAuthMode } from '../store/useAuth';
 
 function Spinner() {
   return (
@@ -14,22 +14,18 @@ function Spinner() {
 }
 
 export function ProtectedRoute() {
-  const status = useAuth((s) => s.status);
+  const mode = useAuthMode();
   const location = useLocation();
-  if (status === 'loading') return <Spinner />;
-  if (status === 'unauthenticated') {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  }
-  if (status === 'disabled') {
-    // Sin Supabase configurado: dejamos pasar para que la app no quede inservible
-    // en desarrollo sin .env.local.
-  }
-  return <Outlet />;
+  if (mode === 'loading') return <Spinner />;
+  if (mode === 'authed' || mode === 'guest') return <Outlet />;
+  return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 }
 
 export function PublicOnlyRoute() {
-  const status = useAuth((s) => s.status);
-  if (status === 'loading') return <Spinner />;
-  if (status === 'authenticated') return <Navigate to="/album" replace />;
+  const mode = useAuthMode();
+  if (mode === 'loading') return <Spinner />;
+  // Authed users go straight to the app. Guests can still access the landing
+  // and the login/register screens — they may want to upgrade to a real account.
+  if (mode === 'authed') return <Navigate to="/album" replace />;
   return <Outlet />;
 }

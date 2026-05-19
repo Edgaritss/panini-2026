@@ -1,4 +1,5 @@
 import { useAlbumStore } from '../store/useAlbumStore';
+import { useAuthMode } from '../store/useAuth';
 import type { SyncStatus } from '../types';
 
 const COPY: Record<SyncStatus, { dot: string; label: string }> = {
@@ -12,6 +13,22 @@ const COPY: Record<SyncStatus, { dot: string; label: string }> = {
 
 export function SyncIndicator() {
   const sync = useAlbumStore((s) => s.sync);
+  const mode = useAuthMode();
+
+  if (mode === 'guest') {
+    return (
+      <span
+        role="status"
+        title="Modo invitado · datos solo en este dispositivo"
+        aria-label="Modo invitado"
+        className="hidden sm:inline-flex items-center gap-2 text-small text-[#92400E] dark:text-[#FCD34D] px-3 py-1 rounded-full bg-[#FEF3C7] dark:bg-[#451A03] border border-[#F59E0B]/60"
+      >
+        <span className="w-2 h-2 rounded-full bg-[#F59E0B]" aria-hidden />
+        <span className="hidden md:inline">Solo en este dispositivo</span>
+      </span>
+    );
+  }
+
   const { dot, label } = COPY[sync.status];
   const detail =
     sync.status === 'error' && sync.lastError

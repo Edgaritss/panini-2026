@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import { FloatingTiles } from '../components/landing/FloatingTiles';
 import { DemoMockup } from '../components/landing/DemoMockup';
 import { Icon } from '../components/Icon';
+import { useAuth } from '../store/useAuth';
 
 const heroVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -16,6 +17,13 @@ const heroVariants = {
 export function Landing() {
   const reduce = useReducedMotion();
   const year = new Date().getFullYear();
+  const enterGuest = useAuth((s) => s.enterGuest);
+  const navigate = useNavigate();
+
+  function startAsGuest() {
+    enterGuest();
+    navigate('/album', { replace: true });
+  }
 
   return (
     <div
@@ -83,8 +91,8 @@ export function Landing() {
           variants={heroVariants}
           className="text-body sm:text-[18px] md:text-[20px] text-on-surface-variant max-w-2xl mx-auto mt-6"
         >
-          Lleva el control de tus 980 estampas Panini desde cualquier dispositivo.
-          Marca lo que tienes, identifica lo que te falta, organiza tus intercambios.
+          Lleva el control de tus 980 estampas Panini. Empieza ahora mismo,
+          regístrate después si quieres sincronizar entre dispositivos.
         </motion.p>
         <motion.div
           custom={3}
@@ -93,12 +101,13 @@ export function Landing() {
           variants={heroVariants}
           className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3"
         >
-          <Link
-            to="/registro"
+          <button
+            type="button"
+            onClick={startAsGuest}
             className="h-12 px-6 inline-flex items-center justify-center gap-2 rounded-full bg-secondary text-on-secondary text-body-strong hover:bg-secondary-container transition-colors shadow-lg shadow-secondary/20"
           >
-            Empezar ahora <Icon name="arrow_forward" size={20} />
-          </Link>
+            Empezar sin cuenta <Icon name="arrow_forward" size={20} />
+          </button>
           <Link
             to="/login"
             className="h-12 px-6 inline-flex items-center justify-center rounded-full border border-on-surface/30 text-on-surface text-body-strong hover:bg-on-surface/5 transition-colors"
@@ -108,6 +117,17 @@ export function Landing() {
         </motion.div>
         <motion.p
           custom={4}
+          initial="hidden"
+          animate="visible"
+          variants={heroVariants}
+          className="mt-4 text-small text-on-surface-variant"
+        >
+          <Link to="/registro" className="hover:text-secondary transition-colors">
+            o crea una cuenta para sincronizar →
+          </Link>
+        </motion.p>
+        <motion.p
+          custom={5}
           initial="hidden"
           animate="visible"
           variants={heroVariants}
