@@ -2,12 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth, useAuthMode } from '../store/useAuth';
 import {
+  buildCollabUrl,
   buildQrDataUrl,
   buildShareUrl,
+  createCollabShare,
   createReadOnlyShare,
   listMyShares,
+  listShareActivity,
   revokeShare,
   maskEmail,
+  type CollabDuration,
+  type ShareLogEntry,
   type ShareRow,
 } from '../lib/share';
 import { Icon } from '../components/Icon';
@@ -21,6 +26,9 @@ export function SharePage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<ShareRow | null>(null);
   const [created, setCreated] = useState<ShareRow | null>(null);
+  const [collabCreated, setCollabCreated] = useState<{ share: ShareRow; pin: string } | null>(null);
+  const [collabOpen, setCollabOpen] = useState(false);
+  const [activityFor, setActivityFor] = useState<ShareRow | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
   async function refresh() {
@@ -47,6 +55,28 @@ export function SharePage() {
     try {
       const s = await createReadOnlyShare(user?.email ?? null);
       setCreated(s);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error desconocido');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateCollab(
+    duration: CollabDuration,
+    allowRemove: boolean,
+  ) {
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await createCollabShare({
+        currentEmail: user?.email ?? null,
+        duration,
+        allowRemove,
+      });
+      setCollabOpen(false);
+      setCollabCreated(result);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error desconocido');
@@ -100,22 +130,49 @@ export function SharePage() {
         </p>
       </div>
 
-      <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 md:p-6 flex flex-col gap-4">
-        <div>
-          <h2 className="text-heading text-on-surface">Solo lectura</h2>
-          <p className="text-small text-on-surface-variant mt-1">
-            Cualquier persona con el link puede ver tu álbum pero no editarlo.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={busy}
-          className="self-start h-11 px-5 rounded-full bg-secondary text-on-secondary font-body-strong hover:bg-secondary-container transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {busy ? 'Generando…' : 'Generar enlace de solo lectura →'}
-        </button>
-      </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 md:p-6 flex flex-col gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Icon name="visibility" size={18} className="text-on-surface-variant" />
+              <h2 className="text-heading text-on-surface">Solo lectura</h2>
+            </div>
+            <p className="text-small text-on-surface-variant mt-2">
+              Cualquier persona con el link puede ver tu álbum pero no
+              editarlo. Sin expiración.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={busy}
+            className="self-start h-11 px-5 rounded-full bg-secondary text-on-secondary font-body-strong hover:bg-secondary-container transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {busy ? 'Generando…' : 'Generar enlace →'}
+          </button>
+        </section>
+
+        <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 md:p-6 flex flex-col gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Icon name="edit_note" size={20} className="text-on-surface-variant" />
+              <h2 className="text-heading text-on-surface">Colaboración</h2>
+            </div>
+            <p className="text-small text-on-surface-variant mt-2">
+              Link + PIN para que alguien edite contigo (agregar y, opcional,
+              quitar). Expira y se puede revocar.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCollabOpen(true)}
+            disabled={busy}
+            className="self-start h-11 px-5 rounded-full border border-on-surface/30 text-on-surface font-body-strong hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Generar link y PIN →
+          </button>
+        </section>
+      </div>
 
       {error && (
         <div
@@ -147,6 +204,9 @@ export function SharePage() {
                 onCopy={copy}
                 onRevoke={() => setConfirmRevoke(s)}
                 onOpenQr={() => setCreated(s)}
+                onShowActivity={
+                  s.mode === 'collaborative' ? () => setActivityFor(s) : undefined
+                }
               />
             ))}
           </ul>
@@ -174,6 +234,29 @@ export function SharePage() {
 
       {created && (
         <ShareCreatedModal share={created} onClose={() => setCreated(null)} />
+      )}
+
+      {collabOpen && (
+        <CollabGenerateModal
+          busy={busy}
+          onCancel={() => setCollabOpen(false)}
+          onSubmit={handleCreateCollab}
+        />
+      )}
+
+      {collabCreated && (
+        <CollabCreatedModal
+          share={collabCreated.share}
+          pin={collabCreated.pin}
+          onClose={() => setCollabCreated(null)}
+        />
+      )}
+
+      {activityFor && (
+        <ActivityModal
+          share={activityFor}
+          onClose={() => setActivityFor(null)}
+        />
       )}
 
       {confirmRevoke && (
@@ -223,22 +306,46 @@ interface RowProps {
   onCopy: (url: string) => void;
   onRevoke: () => void;
   onOpenQr: () => void;
+  onShowActivity?: () => void;
 }
 
-function ShareRowItem({ share, copied, onCopy, onRevoke, onOpenQr }: RowProps) {
-  const url = buildShareUrl(share.id);
+function ShareRowItem({
+  share,
+  copied,
+  onCopy,
+  onRevoke,
+  onOpenQr,
+  onShowActivity,
+}: RowProps) {
+  const url =
+    share.mode === 'collaborative'
+      ? buildCollabUrl(share.id)
+      : buildShareUrl(share.id);
   const wasCopied = copied === url;
+  const expiry = share.expires_at ? new Date(share.expires_at) : null;
+  const expired = expiry && expiry.getTime() < Date.now();
   return (
     <li className="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3">
       <div className="flex-1 min-w-0">
-        <p className="text-body-strong text-on-surface">
+        <p className="text-body-strong text-on-surface flex items-center gap-2">
           {share.mode === 'readonly' ? 'Solo lectura' : 'Colaboración'}
+          {share.mode === 'collaborative' && (
+            <span className="text-caps uppercase px-2 py-0.5 rounded-full bg-secondary/15 text-secondary">
+              PIN
+            </span>
+          )}
         </p>
         <p className="text-small text-on-surface-variant truncate font-mono">
           {url}
         </p>
         <p className="text-small text-on-surface-variant/70 mt-1">
           Creado {new Date(share.created_at).toLocaleDateString()}
+          {expiry && (
+            <>
+              {' · '}
+              {expired ? 'expirado' : `expira ${expiry.toLocaleString()}`}
+            </>
+          )}
           {share.last_accessed_at &&
             ` · último acceso ${new Date(share.last_accessed_at).toLocaleDateString()}`}
         </p>
@@ -260,6 +367,16 @@ function ShareRowItem({ share, copied, onCopy, onRevoke, onOpenQr }: RowProps) {
         >
           <Icon name="qr_code" size={18} />
         </button>
+        {onShowActivity && (
+          <button
+            type="button"
+            onClick={onShowActivity}
+            aria-label="Ver actividad"
+            className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-outline-variant text-on-surface hover:bg-surface-container transition-colors"
+          >
+            <Icon name="history" size={18} />
+          </button>
+        )}
         <button
           type="button"
           onClick={onRevoke}
@@ -378,6 +495,318 @@ function ShareCreatedModal({
           >
             Cerrar
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CollabGenerateModalProps {
+  busy: boolean;
+  onCancel: () => void;
+  onSubmit: (duration: CollabDuration, allowRemove: boolean) => void;
+}
+
+const DURATIONS: { id: CollabDuration; label: string }[] = [
+  { id: '1h', label: '1 hora' },
+  { id: '4h', label: '4 horas' },
+  { id: '24h', label: '24 horas' },
+  { id: '7d', label: '7 días' },
+];
+
+function CollabGenerateModal({ busy, onCancel, onSubmit }: CollabGenerateModalProps) {
+  const [duration, setDuration] = useState<CollabDuration>('4h');
+  const [allowRemove, setAllowRemove] = useState(false);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/30 backdrop-blur-sm p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="modal-anim w-full max-w-[480px] bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 md:p-8 flex flex-col gap-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header>
+          <h2 className="text-heading text-on-surface">Generar link de colaboración</h2>
+          <p className="text-small text-on-surface-variant mt-1">
+            La persona necesitará el link <strong>y</strong> el PIN que verás
+            al final para entrar.
+          </p>
+        </header>
+
+        <section className="space-y-2">
+          <p className="text-caps text-on-surface-variant uppercase tracking-wider">
+            Duración
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {DURATIONS.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setDuration(d.id)}
+                className={`h-10 px-3 rounded-md border text-small transition-colors ${
+                  duration === d.id
+                    ? 'bg-secondary text-on-secondary border-secondary'
+                    : 'border-outline-variant text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-2">
+          <p className="text-caps text-on-surface-variant uppercase tracking-wider">
+            Permisos
+          </p>
+          <button
+            type="button"
+            onClick={() => setAllowRemove(false)}
+            className={`w-full text-left rounded-lg border p-3 transition-colors ${
+              !allowRemove
+                ? 'border-secondary/60 bg-secondary/5'
+                : 'border-outline-variant hover:bg-surface-container'
+            }`}
+          >
+            <p className="text-body-strong text-on-surface">
+              Solo agregar
+              {!allowRemove && (
+                <span className="ml-2 text-caps uppercase text-secondary">
+                  Más seguro
+                </span>
+              )}
+            </p>
+            <p className="text-small text-on-surface-variant mt-0.5">
+              Pueden marcar estampas pero no quitarlas.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllowRemove(true)}
+            className={`w-full text-left rounded-lg border p-3 transition-colors ${
+              allowRemove
+                ? 'border-secondary/60 bg-secondary/5'
+                : 'border-outline-variant hover:bg-surface-container'
+            }`}
+          >
+            <p className="text-body-strong text-on-surface">Agregar y quitar</p>
+            <p className="text-small text-on-surface-variant mt-0.5">
+              Edición completa, igual que si fueras tú.
+            </p>
+          </button>
+        </section>
+
+        <footer className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 rounded border border-outline-variant bg-surface text-on-surface font-body-strong hover:bg-surface-container transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => onSubmit(duration, allowRemove)}
+            disabled={busy}
+            className="px-4 py-2 rounded bg-secondary text-on-secondary font-body-strong hover:bg-secondary-container transition-colors shadow-sm disabled:opacity-50"
+          >
+            {busy ? 'Generando…' : 'Generar →'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function CollabCreatedModal({
+  share,
+  pin,
+  onClose,
+}: {
+  share: ShareRow;
+  pin: string;
+  onClose: () => void;
+}) {
+  const url = buildCollabUrl(share.id);
+  const [copied, setCopied] = useState<'url' | 'pin' | null>(null);
+
+  async function copy(value: string, kind: 'url' | 'pin') {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(kind);
+    window.setTimeout(() => setCopied(null), 1500);
+  }
+
+  const expiry = share.expires_at ? new Date(share.expires_at) : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/30 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="modal-anim w-full max-w-[480px] bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 md:p-8 flex flex-col gap-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header>
+          <h2 className="text-heading text-on-surface">Link de colaboración listo</h2>
+          <p className="text-small text-on-surface-variant mt-1">
+            Manda el link y el PIN <strong>por separado</strong> para mayor
+            seguridad. Por ejemplo, el link por WhatsApp y el PIN en persona.
+          </p>
+        </header>
+
+        <section>
+          <p className="text-caps text-on-surface-variant uppercase mb-1">PIN</p>
+          <div className="flex items-center gap-3">
+            <p className="font-mono text-[40px] tracking-[0.3em] text-secondary tabular-nums select-all">
+              {pin}
+            </p>
+            <button
+              type="button"
+              onClick={() => copy(pin, 'pin')}
+              className="h-9 px-3 rounded-md border border-outline-variant text-small text-on-surface hover:bg-surface-container transition-colors"
+            >
+              {copied === 'pin' ? '✓' : 'Copiar PIN'}
+            </button>
+          </div>
+          <p className="text-small text-on-surface-variant mt-1">
+            No podrás recuperar este PIN después. Si lo pierdes, revoca y genera otro.
+          </p>
+        </section>
+
+        <section>
+          <p className="text-caps text-on-surface-variant uppercase mb-1">Link</p>
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={url}
+              onFocus={(e) => e.currentTarget.select()}
+              className="flex-1 h-10 px-3 rounded-md bg-surface-container border border-outline-variant text-small font-mono text-on-surface"
+            />
+            <button
+              type="button"
+              onClick={() => copy(url, 'url')}
+              className="h-10 px-3 rounded-md bg-secondary text-on-secondary text-small font-body-strong hover:bg-secondary-container transition-colors shrink-0"
+            >
+              {copied === 'url' ? '✓' : 'Copiar'}
+            </button>
+          </div>
+        </section>
+
+        {expiry && (
+          <p className="text-small text-on-surface-variant text-center">
+            Expira el <strong>{expiry.toLocaleString()}</strong>.
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-10 rounded-md bg-on-surface text-background text-small font-body-strong hover:opacity-90 transition-opacity"
+        >
+          Ya lo guardé
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ActivityModal({
+  share,
+  onClose,
+}: {
+  share: ShareRow;
+  onClose: () => void;
+}) {
+  const [log, setLog] = useState<ShareLogEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listShareActivity(share.id)
+      .then(setLog)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Error'));
+  }, [share.id]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/30 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="modal-anim w-full max-w-[560px] max-h-[80vh] bg-surface-container-lowest border border-outline-variant rounded-2xl flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+          <div>
+            <h2 className="text-heading text-on-surface">Actividad</h2>
+            <p className="text-small text-on-surface-variant font-mono truncate">
+              {share.id}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="w-9 h-9 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container"
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4">
+          {error && (
+            <p className="text-small text-secondary">{error}</p>
+          )}
+          {log === null && !error && (
+            <p className="text-small text-on-surface-variant">Cargando…</p>
+          )}
+          {log && log.length === 0 && (
+            <p className="text-small text-on-surface-variant text-center py-8">
+              Aún no hay actividad registrada en este enlace.
+            </p>
+          )}
+          {log && log.length > 0 && (
+            <ul className="divide-y divide-outline-variant">
+              {log.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="py-3 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Icon
+                      name={entry.action === 'add' ? 'add' : 'remove'}
+                      filled
+                      size={16}
+                      className={
+                        entry.action === 'add'
+                          ? 'text-[#15803D] dark:text-[#22c55e]'
+                          : 'text-secondary'
+                      }
+                    />
+                    <span className="font-mono text-mono-code text-on-surface">
+                      {entry.sticker_id}
+                    </span>
+                    <span className="text-small text-on-surface-variant">
+                      {entry.count_before} → {entry.count_after}
+                    </span>
+                  </div>
+                  <span className="text-small text-on-surface-variant/80 tabular-nums shrink-0">
+                    {new Date(entry.created_at).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

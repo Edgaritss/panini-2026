@@ -8,6 +8,7 @@ import { Settings } from './pages/Settings';
 import { SectionPage } from './pages/SectionPage';
 import { SharePage } from './pages/SharePage';
 import { SharedAlbum } from './pages/SharedAlbum';
+import { CollabAlbum } from './pages/CollabAlbum';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -40,6 +41,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/compartido/:id" element={<SharedAlbum />} />
+      <Route path="/colaborar/:id" element={<CollabAlbum />} />
       <Route element={<PublicOnlyRoute />}>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
