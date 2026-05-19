@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAlbumStore } from '../store/useAlbumStore';
 import { useSettings } from '../store/useSettings';
+import { useAuthMode } from '../store/useAuth';
 import { importJSONFile } from '../lib/exportImport';
 import { downloadExcel } from '../lib/exportExcel';
 import { TOTAL, stickers } from '../data/album';
@@ -28,11 +30,19 @@ export function Settings() {
   const toggleReducedMotion = useSettings((s) => s.toggleReducedMotion);
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [needsAccountOpen, setNeedsAccountOpen] = useState(false);
   const [busy, setBusy] = useState<'export' | null>(null);
   const [importMsg, setImportMsg] = useState<{
     tone: 'ok' | 'error';
     text: string;
   } | null>(null);
+  const mode = useAuthMode();
+  const navigate = useNavigate();
+
+  function handleShareClick() {
+    if (mode === 'authed') navigate('/ajustes/compartir');
+    else setNeedsAccountOpen(true);
+  }
 
   async function handleExport() {
     try {
@@ -76,6 +86,12 @@ export function Settings() {
       <section className="space-y-4">
         <h3 className="text-caps text-on-surface-variant uppercase">Datos</h3>
         <div className="bg-surface-container-lowest rounded-lg border border-outline-variant overflow-hidden">
+          <SettingsRow
+            icon="ios_share"
+            label="Compartir mi álbum"
+            onClick={handleShareClick}
+            divider
+          />
           <SettingsRow
             icon="table_chart"
             label={busy === 'export' ? 'Generando Excel…' : 'Exportar Excel (.xlsx)'}
@@ -215,6 +231,41 @@ export function Settings() {
               className="px-4 py-2 rounded bg-secondary text-on-secondary font-body-strong hover:bg-secondary-container transition-colors shadow-sm"
             >
               Sí, reiniciar
+            </button>
+          </>
+        }
+      />
+
+      <Modal
+        open={needsAccountOpen}
+        onClose={() => setNeedsAccountOpen(false)}
+        title="Necesitas una cuenta"
+        description={
+          <>
+            Para compartir tu álbum necesitas crear una cuenta. Tu progreso
+            del modo invitado puede migrarse automáticamente cuando te
+            registres.
+          </>
+        }
+        icon={{ name: 'lock', tone: 'danger' }}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setNeedsAccountOpen(false)}
+              className="px-4 py-2 rounded border border-outline-variant bg-surface text-on-surface font-body-strong hover:bg-surface-container transition-colors"
+            >
+              Ahora no
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNeedsAccountOpen(false);
+                navigate('/registro');
+              }}
+              className="px-4 py-2 rounded bg-secondary text-on-secondary font-body-strong hover:bg-secondary-container transition-colors shadow-sm"
+            >
+              Crear cuenta
             </button>
           </>
         }

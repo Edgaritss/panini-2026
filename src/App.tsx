@@ -6,6 +6,8 @@ import { Trades } from './pages/Trades';
 import { Stats } from './pages/Stats';
 import { Settings } from './pages/Settings';
 import { SectionPage } from './pages/SectionPage';
+import { SharePage } from './pages/SharePage';
+import { SharedAlbum } from './pages/SharedAlbum';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -37,6 +39,7 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/compartido/:id" element={<SharedAlbum />} />
       <Route element={<PublicOnlyRoute />}>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
@@ -48,6 +51,7 @@ export default function App() {
           <Route path="/cambios" element={<Trades />} />
           <Route path="/estadisticas" element={<Stats />} />
           <Route path="/ajustes" element={<Settings />} />
+          <Route path="/ajustes/compartir" element={<SharePage />} />
           <Route path="/seccion/:code" element={<SectionPage />} />
         </Route>
       </Route>
