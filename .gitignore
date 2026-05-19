@@ -23,6 +23,9 @@ stitch/
 # Playwright MCP scratch
 .playwright-mcp/
 
+# Claude Code local config (permission grants, may include keys)
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
