@@ -1,10 +1,8 @@
-import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import { FloatingTiles } from '../components/landing/FloatingTiles';
 import { DemoMockup } from '../components/landing/DemoMockup';
 import { Icon } from '../components/Icon';
-import { BrandLogo } from '../components/BrandLogo';
 
 const heroVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -18,14 +16,6 @@ const heroVariants = {
 export function Landing() {
   const reduce = useReducedMotion();
   const year = new Date().getFullYear();
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  function freezeOnEnd() {
-    const v = videoRef.current;
-    if (!v) return;
-    v.pause();
-    if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, v.duration - 0.01);
-  }
 
   return (
     <div
@@ -39,7 +29,8 @@ export function Landing() {
 
       <header className="relative z-10 max-w-max-width mx-auto w-full px-margin-mobile md:px-margin-desktop py-5 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3" aria-label="Inicio">
-          <BrandLogo size="md" />
+          <span className="w-8 h-8 bg-secondary rounded-sm" aria-hidden />
+          <span className="font-semibold text-heading tracking-tight">Mundial '26</span>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-3">
           <Link
@@ -57,30 +48,7 @@ export function Landing() {
         </nav>
       </header>
 
-      <section className="relative z-10 max-w-max-width mx-auto w-full px-margin-mobile md:px-margin-desktop pt-8 md:pt-12 pb-20 md:pb-32 text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="mx-auto mb-8 md:mb-10 w-[220px] sm:w-[260px] md:w-[300px] aspect-square"
-        >
-          {reduce ? (
-            <BrandLogo size="xl" decorative className="!w-full !h-full" />
-          ) : (
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              preload="auto"
-              aria-hidden
-              onEnded={freezeOnEnd}
-              className="w-full h-full object-contain"
-            >
-              <source src="/brand/logo-intro.mp4" type="video/mp4" />
-            </video>
-          )}
-        </motion.div>
+      <section className="relative z-10 max-w-max-width mx-auto w-full px-margin-mobile md:px-margin-desktop pt-12 md:pt-20 pb-20 md:pb-32 text-center">
         <motion.p
           custom={0}
           initial="hidden"

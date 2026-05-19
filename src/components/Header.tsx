@@ -3,7 +3,6 @@ import { useAlbumStore } from '../store/useAlbumStore';
 import { Icon } from './Icon';
 import { SyncIndicator } from './SyncIndicator';
 import { UserMenu } from './UserMenu';
-import { BrandLogo } from './BrandLogo';
 
 const tabs = [
   { to: '/album', label: 'Álbum', end: true },
@@ -30,10 +29,13 @@ export function Header() {
         <div className="flex items-center justify-between h-16 gap-4">
           <Link
             to="/album"
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-3 text-on-surface"
             aria-label="Ir al álbum"
           >
-            <BrandLogo size="md" />
+            <span className="w-8 h-8 bg-secondary rounded-sm shrink-0" aria-hidden />
+            <span className="font-semibold text-heading tracking-tight">
+              Mundial '26
+            </span>
           </Link>
 
           <nav

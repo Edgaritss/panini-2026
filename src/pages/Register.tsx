@@ -4,7 +4,6 @@ import { useAuth } from '../store/useAuth';
 import { AuthShell } from '../components/AuthShell';
 import { Field } from './Login';
 import { Icon } from '../components/Icon';
-import { clearSplashShown } from '../components/LogoSplash';
 import { translateAuthError } from '../lib/authErrors';
 
 export function Register() {
@@ -58,7 +57,6 @@ export function Register() {
       );
       return;
     }
-    clearSplashShown();
     navigate('/album', { replace: true });
   }
 

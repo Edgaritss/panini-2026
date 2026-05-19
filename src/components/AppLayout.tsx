@@ -1,14 +1,10 @@
-import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { Toast } from './Toast';
 import { CelebrationOverlay } from './CelebrationOverlay';
-import { LogoSplash, shouldShowSplash } from './LogoSplash';
 
 export function AppLayout() {
-  const [splashOpen, setSplashOpen] = useState<boolean>(() => shouldShowSplash());
-
   return (
     <div className="min-h-screen flex flex-col bg-background text-on-background">
       <Header />
@@ -18,7 +14,6 @@ export function AppLayout() {
       <Footer />
       <Toast />
       <CelebrationOverlay />
-      {splashOpen && <LogoSplash onDone={() => setSplashOpen(false)} />}
     </div>
   );
 }
