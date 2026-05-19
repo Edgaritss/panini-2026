@@ -26,7 +26,8 @@ export async function initSync(): Promise<void> {
   useAlbumStore.subscribe((state, prev) => {
     if (
       state.counts === prev.counts &&
-      state.firstAddedAt === prev.firstAddedAt
+      state.firstAddedAt === prev.firstAddedAt &&
+      state.fullAlbumCelebratedAt === prev.fullAlbumCelebratedAt
     ) {
       return;
     }
@@ -68,6 +69,7 @@ async function handleUserChange(userId: string | null): Promise<void> {
   useAlbumStore.setState({
     counts: {},
     firstAddedAt: null,
+    fullAlbumCelebratedAt: null,
     localUpdatedAt: 0,
     notice: null,
   });
@@ -93,7 +95,9 @@ async function hydrate(userId: string): Promise<void> {
   setStatus({ status: 'initializing' });
   const { data, error } = await supabase
     .from('user_collections')
-    .select('user_id, owned, first_added_at, created_at, updated_at')
+    .select(
+      'user_id, owned, first_added_at, full_album_celebrated_at, created_at, updated_at',
+    )
     .eq('user_id', userId)
     .maybeSingle<UserCollectionRow>();
 
@@ -113,9 +117,13 @@ async function hydrate(userId: string): Promise<void> {
   const remoteFirstAdded = data.first_added_at
     ? new Date(data.first_added_at).getTime()
     : null;
+  const remoteFullCelebrated = data.full_album_celebrated_at
+    ? new Date(data.full_album_celebrated_at).getTime()
+    : null;
   useAlbumStore.getState().hydrateFromRemote({
     counts: data.owned ?? {},
     firstAddedAt: remoteFirstAdded,
+    fullAlbumCelebratedAt: remoteFullCelebrated,
     remoteUpdatedAt,
   });
 }
@@ -149,6 +157,9 @@ export async function saveNow(): Promise<void> {
   const firstAddedAt = state.firstAddedAt
     ? new Date(state.firstAddedAt).toISOString()
     : null;
+  const fullAlbumCelebratedAt = state.fullAlbumCelebratedAt
+    ? new Date(state.fullAlbumCelebratedAt).toISOString()
+    : null;
 
   const { error } = await supabase
     .from('user_collections')
@@ -157,6 +168,7 @@ export async function saveNow(): Promise<void> {
         user_id: userId,
         owned: state.counts,
         first_added_at: firstAddedAt,
+        full_album_celebrated_at: fullAlbumCelebratedAt,
       },
       { onConflict: 'user_id' },
     );

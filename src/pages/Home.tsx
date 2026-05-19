@@ -1,11 +1,17 @@
 import { useMemo } from 'react';
 import { useAlbumStore } from '../store/useAlbumStore';
-import { sections, stickersBySection } from '../data/album';
+import { sections } from '../data/album';
 import { ProgressBar } from '../components/ProgressBar';
 import { Filters } from '../components/Filters';
-import { SectionCard } from '../components/SectionCard';
+import { CountryCard } from '../components/CountryCard';
+import { GroupHeader } from '../components/GroupHeader';
 import { EmptyBanner } from '../components/EmptyBanner';
-import type { Sticker } from '../types';
+import type { Section } from '../types';
+
+interface Counts {
+  owned: number;
+  duplicates: number;
+}
 
 export function Home() {
   const counts = useAlbumStore((s) => s.counts);
@@ -14,59 +20,103 @@ export function Home() {
 
   const isEmpty = Object.keys(counts).length === 0;
 
-  const visibleSections = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return sections;
-    return sections.filter((s) => {
-      const groupLabel = s.group ? `grupo ${s.group}`.toLowerCase() : '';
-      return (
-        s.name.toLowerCase().includes(q) ||
-        s.code.toLowerCase().includes(q) ||
-        groupLabel.includes(q) ||
-        (s.group ? s.group.toLowerCase() === q : false)
-      );
-    });
-  }, [search]);
-
-  function applyFilter(items: Sticker[]): Sticker[] {
-    if (filter === 'all') return items;
-    if (filter === 'missing') return items.filter((s) => !counts[s.id]);
-    if (filter === 'have') return items.filter((s) => (counts[s.id] ?? 0) >= 1);
-    return items.filter((s) => (counts[s.id] ?? 0) > 1);
+  function sectionCounts(section: Section): Counts {
+    let owned = 0;
+    let duplicates = 0;
+    for (let n = 1; n <= 20; n += 1) {
+      const c = counts[`${section.code}${n}`] ?? 0;
+      if (c >= 1) owned += 1;
+      if (c > 1) duplicates += c - 1;
+    }
+    return { owned, duplicates };
   }
 
-  const rendered = visibleSections
-    .map((section) => {
-      const all = stickersBySection.get(section.code) ?? [];
-      const visible = applyFilter(all);
-      if (filter !== 'all' && visible.length === 0) return null;
-      return (
-        <SectionCard
-          key={section.code}
-          section={section}
-          allStickers={all}
-          visibleStickers={visible}
-        />
-      );
-    })
-    .filter(Boolean);
+  function passesFilter(section: Section): boolean {
+    if (filter === 'all') return true;
+    const { owned, duplicates } = sectionCounts(section);
+    if (filter === 'missing') return owned < 20;
+    if (filter === 'have') return owned > 0;
+    return duplicates > 0;
+  }
+
+  function passesSearch(section: Section): boolean {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const groupLabel = section.group ? `grupo ${section.group}`.toLowerCase() : '';
+    return (
+      section.name.toLowerCase().includes(q) ||
+      section.code.toLowerCase().includes(q) ||
+      groupLabel.includes(q) ||
+      (section.group ? section.group.toLowerCase() === q : false)
+    );
+  }
+
+  const { fwc, groups } = useMemo(() => {
+    const visible = sections.filter((s) => passesSearch(s) && passesFilter(s));
+    const fwc = visible.find((s) => s.group === null) ?? null;
+
+    // Position index 1..48 across the 48 selections (FWC excluded).
+    const indexByCode = new Map<string, number>();
+    let i = 0;
+    for (const s of sections) {
+      if (s.group === null) continue;
+      i += 1;
+      indexByCode.set(s.code, i);
+    }
+
+    const grouped = new Map<string, Section[]>();
+    for (const s of visible) {
+      if (s.group === null) continue;
+      const list = grouped.get(s.group) ?? [];
+      list.push(s);
+      grouped.set(s.group, list);
+    }
+    const ordered = Array.from(grouped.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([group, items]) => ({
+        group,
+        items: items.map((s) => ({ section: s, index: indexByCode.get(s.code)! })),
+      }));
+    return { fwc, groups: ordered };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counts, filter, search]);
+
+  const nothingMatches = !fwc && groups.length === 0;
 
   return (
     <div className="flex flex-col gap-8">
       <ProgressBar />
       {isEmpty && <EmptyBanner />}
       <Filters />
-      <section className="flex flex-col gap-3">
-        {rendered.length > 0 ? (
-          rendered
-        ) : (
-          <div className="text-center text-body text-on-surface-variant py-12">
-            {search.trim()
-              ? 'Sin secciones que coincidan con la búsqueda.'
-              : 'Sin secciones con estampas en este filtro.'}
-          </div>
-        )}
-      </section>
+
+      {nothingMatches ? (
+        <div className="text-center text-body text-on-surface-variant py-12">
+          {search.trim()
+            ? 'Sin selecciones que coincidan con la búsqueda.'
+            : 'Sin selecciones con estampas en este filtro.'}
+        </div>
+      ) : (
+        <div className="flex flex-col">
+          {fwc && (
+            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              <CountryCard section={fwc} />
+            </section>
+          )}
+          {groups.map(({ group, items }) => (
+            <section key={group}>
+              <GroupHeader
+                label={`Grupo ${group}`}
+                caption={`${items.length} ${items.length === 1 ? 'selección' : 'selecciones'}`}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                {items.map(({ section, index }) => (
+                  <CountryCard key={section.code} section={section} index={index} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -19,6 +19,7 @@ export interface UserCollectionRow {
   user_id: string;
   owned: Record<string, number>;
   first_added_at: string | null;
+  full_album_celebrated_at: string | null;
   created_at: string;
   updated_at: string;
 }
