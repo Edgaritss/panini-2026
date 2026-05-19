@@ -11,9 +11,17 @@ interface Props {
   countsOverride?: Record<string, number>;
   /** Render the card without an internal link to /seccion/:code. */
   readOnly?: boolean;
+  /** When provided in read-only mode, wraps the card in a button instead. */
+  onClick?: () => void;
 }
 
-export function CountryCard({ section, index, countsOverride, readOnly }: Props) {
+export function CountryCard({
+  section,
+  index,
+  countsOverride,
+  readOnly,
+  onClick,
+}: Props) {
   const storeCounts = useAlbumStore((s) => s.counts);
   const counts = countsOverride ?? storeCounts;
   let owned = 0;
@@ -27,13 +35,14 @@ export function CountryCard({ section, index, countsOverride, readOnly }: Props)
   const isFWC = section.group === null;
   const longName = isFWC ? 'FIFA World Cup 2026' : section.name;
 
-  const baseClassName = `group relative h-[180px] flex flex-col rounded-xl overflow-hidden transition-all duration-150 ${
-    readOnly ? '' : 'hover:-translate-y-0.5 hover:shadow-md'
+  const interactive = !readOnly || !!onClick;
+  const baseClassName = `group relative h-[180px] flex flex-col rounded-xl overflow-hidden transition-all duration-150 text-left ${
+    interactive ? 'hover:-translate-y-0.5 hover:shadow-md' : ''
   } ${
     status === 'complete'
       ? 'border border-[#15803D]/30 dark:border-[#22c55e]/40 bg-[#15803D]/[0.04] dark:bg-[#22c55e]/[0.06]'
       : `border border-outline-variant bg-surface-container-lowest ${
-          readOnly ? '' : 'hover:border-on-surface-variant/40'
+          interactive ? 'hover:border-on-surface-variant/40' : ''
         }`
   } ${isFWC ? 'md:col-span-2' : ''}`;
 
@@ -106,6 +115,13 @@ export function CountryCard({ section, index, countsOverride, readOnly }: Props)
   );
 
   if (readOnly) {
+    if (onClick) {
+      return (
+        <button type="button" onClick={onClick} className={baseClassName}>
+          {inner}
+        </button>
+      );
+    }
     return <article className={baseClassName}>{inner}</article>;
   }
 

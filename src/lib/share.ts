@@ -17,6 +17,7 @@ export interface ShareRow {
 export interface PublicSharePayload {
   share: Pick<ShareRow, 'id' | 'mode' | 'display_label' | 'allow_remove' | 'expires_at'>;
   owned: Record<string, number>;
+  firstAddedAt: string | null;
 }
 
 function assertReady() {
@@ -106,9 +107,9 @@ export async function fetchPublicShare(id: string): Promise<PublicSharePayload |
 
   const { data: collection, error: colErr } = await sb
     .from('user_collections')
-    .select('owned')
+    .select('owned, first_added_at')
     .eq('user_id', share.user_id)
-    .maybeSingle<{ owned: Record<string, number> }>();
+    .maybeSingle<{ owned: Record<string, number>; first_added_at: string | null }>();
   if (colErr) throw colErr;
 
   void touchAccessed(id);
@@ -122,6 +123,7 @@ export async function fetchPublicShare(id: string): Promise<PublicSharePayload |
       expires_at: share.expires_at,
     },
     owned: collection?.owned ?? {},
+    firstAddedAt: collection?.first_added_at ?? null,
   };
 }
 

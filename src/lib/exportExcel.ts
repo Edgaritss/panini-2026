@@ -12,6 +12,72 @@ interface SectionStats {
   total: number;
 }
 
+/**
+ * Build an Excel with only the "Me faltan" sheet, for visitors of a shared
+ * album. Includes a disclaimer in cell A1.
+ */
+export async function downloadSharedMissingExcel(
+  counts: Record<string, number>,
+  ownerLabel: string,
+): Promise<void> {
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Mundial 2026 Tracker';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('Me faltan');
+  ws.getCell('A1').value = `Lista compartida — generada desde vista pública del álbum de ${ownerLabel}`;
+  ws.getCell('A1').font = { bold: true, italic: true, color: { argb: 'FF92400E' } };
+  ws.mergeCells('A1:D1');
+  ws.getCell('A2').value = `Exportado el ${new Date().toLocaleString()}`;
+  ws.getCell('A2').font = { italic: true, color: { argb: 'FF92400E' } };
+  ws.mergeCells('A2:D2');
+
+  const headerRow = 4;
+  ['Código', 'Número', 'Sección', 'Grupo'].forEach((h, i) => {
+    const cell = ws.getCell(headerRow, i + 1);
+    cell.value = h;
+    cell.font = { bold: true };
+    cell.fill = solid(HEADER_FILL_RED);
+    cell.border = thinBorder();
+  });
+
+  let row = headerRow + 1;
+  for (const section of sections) {
+    const all = stickersBySection.get(section.code) ?? [];
+    for (const st of all) {
+      if ((counts[st.id] ?? 0) >= 1) continue;
+      setRow(ws, row, [st.id, st.number, section.name, section.group ?? 'Portada']);
+      for (let col = 1; col <= 4; col += 1) {
+        ws.getCell(row, col).border = thinBorder();
+      }
+      row += 1;
+    }
+  }
+
+  ws.autoFilter = {
+    from: { row: headerRow, column: 1 },
+    to: { row: headerRow, column: 4 },
+  };
+  ws.views = [{ state: 'frozen', ySplit: headerRow }];
+  autoSizeColumns(ws, row - 1);
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0, 10);
+  const a = document.createElement('a');
+  const safe = ownerLabel.replace(/[^a-z0-9]/gi, '_').slice(0, 20) || 'compartido';
+  a.href = url;
+  a.download = `faltantes-${safe}-${date}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadExcel(): Promise<void> {
   const ExcelJS = (await import('exceljs')).default;
   const counts = useAlbumStore.getState().counts;
