@@ -43,3 +43,12 @@ export function shouldAnimate(kind: AnimationKind): boolean {
   if (kind === 'celebration') return s.celebrationEnabled;
   return true;
 }
+
+/**
+ * The celebration overlay should still SHOW when reduced motion is on — only
+ * its confetti / floating trophy are suppressed (handled inside the overlay).
+ * It is only fully suppressed when the user toggles celebrations off.
+ */
+export function shouldCelebrate(): boolean {
+  return useSettings.getState().celebrationEnabled;
+}

@@ -15,7 +15,7 @@ import {
   useCelebration,
 } from './useCelebration';
 import { useAnimations, type StickerEvent } from './useAnimations';
-import { shouldAnimate } from './useSettings';
+import { shouldAnimate, shouldCelebrate } from './useSettings';
 
 const STICK_DELAY_MS = 400;
 const BULK_STAGGER_MS = 80;
@@ -174,7 +174,10 @@ function processCompletions(
   if (isFullAlbumMoment) {
     useAlbumStore.setState({ fullAlbumCelebratedAt: Date.now() });
   }
-  if (!shouldAnimate('celebration')) return;
+  // The celebration overlay always shows when the user has it enabled, even
+  // under prefers-reduced-motion — the overlay itself drops the confetti and
+  // the floating trophy in that case.
+  if (!shouldCelebrate()) return;
   // Wait for the stick animation (if any) to finish before showing the overlay.
   const delay = shouldAnimate('stick') ? STICK_DELAY_MS : 0;
   if (delay > 0) {
