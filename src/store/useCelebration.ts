@@ -23,6 +23,18 @@ export function markCelebrated(sectionCode: string): void {
   persistCelebrated(set);
 }
 
+export function unmarkCelebrated(sectionCode: string): void {
+  const set = readCelebrated();
+  if (!set.has(sectionCode)) return;
+  set.delete(sectionCode);
+  persistCelebrated(set);
+}
+
+export function clearAllCelebrated(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(SS_KEY);
+}
+
 interface CelebrationState {
   active: boolean;
   sectionCode: string | null;

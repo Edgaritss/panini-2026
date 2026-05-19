@@ -9,7 +9,9 @@ import type {
 import { sections } from '../data/album';
 import {
   alreadyCelebrated,
+  clearAllCelebrated,
   markCelebrated,
+  unmarkCelebrated,
   useCelebration,
 } from './useCelebration';
 
@@ -120,23 +122,24 @@ function tally(counts: Record<string, number>): PerSectionTotals {
   return { perSection, totalOwned };
 }
 
-function maybeFireCelebration(
+function processCompletions(
   before: Record<string, number>,
   after: Record<string, number>,
   silent: boolean,
 ): void {
-  if (silent) return;
   const a = tally(before);
   const b = tally(after);
   const completedNow: string[] = [];
   for (const s of sections) {
     const was = a.perSection.get(s.code) ?? 0;
     const now = b.perSection.get(s.code) ?? 0;
+    // If a section falls out of "complete", allow it to celebrate again next time.
+    if (was === 20 && now < 20) unmarkCelebrated(s.code);
     if (was < 20 && now === 20 && !alreadyCelebrated(s.code)) {
       completedNow.push(s.code);
     }
   }
-  if (completedNow.length === 0) return;
+  if (silent || completedNow.length === 0) return;
 
   const last = completedNow[completedNow.length - 1];
   markCelebrated(last);
@@ -172,9 +175,10 @@ export const useAlbumStore = create<AlbumState>()(
           const counts = { ...state.counts, [id]: (state.counts[id] ?? 0) + 1 };
           return { counts, ...withFirstAdded(state, counts) };
         });
-        maybeFireCelebration(before, get().counts, false);
+        processCompletions(before, get().counts, false);
       },
-      decrement: (id) =>
+      decrement: (id) => {
+        const before = get().counts;
         set((state) => {
           const current = state.counts[id] ?? 0;
           if (current <= 0) return state;
@@ -182,7 +186,12 @@ export const useAlbumStore = create<AlbumState>()(
           if (current - 1 === 0) delete counts[id];
           else counts[id] = current - 1;
           return { counts, localUpdatedAt: Date.now() };
-        }),
+        });
+        // Pass silent=true: a decrement never triggers a celebration,
+        // but we still want to clear the "celebrated" flag if a section
+        // fell out of 20/20 so it can celebrate again later.
+        processCompletions(before, get().counts, true);
+      },
       setCount: (id, count) => {
         const before = get().counts;
         set((state) => {
@@ -191,7 +200,7 @@ export const useAlbumStore = create<AlbumState>()(
           else counts[id] = Math.floor(count);
           return { counts, ...withFirstAdded(state, counts) };
         });
-        maybeFireCelebration(before, get().counts, false);
+        processCompletions(before, get().counts, false);
       },
       bulkIncrement: (ids, invalidCount = 0, silent = false) => {
         if (ids.length === 0 && invalidCount === 0) return;
@@ -212,17 +221,19 @@ export const useAlbumStore = create<AlbumState>()(
                 },
           };
         });
-        maybeFireCelebration(before, get().counts, silent);
+        processCompletions(before, get().counts, silent);
       },
       dismissNotice: () => set({ notice: null }),
-      reset: () =>
+      reset: () => {
+        clearAllCelebrated();
         set({
           counts: {},
           notice: null,
           firstAddedAt: null,
           fullAlbumCelebratedAt: null,
           localUpdatedAt: Date.now(),
-        }),
+        });
+      },
       importData: (counts) =>
         set((state) => ({
           counts,
