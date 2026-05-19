@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 import { useAlbumStore } from '../store/useAlbumStore';
+import { useSettings } from '../store/useSettings';
 import { importJSONFile } from '../lib/exportImport';
 import { downloadExcel } from '../lib/exportExcel';
 import { TOTAL, stickers } from '../data/album';
 import { Icon } from '../components/Icon';
 import { Modal } from '../components/Modal';
+import { Toggle } from '../components/Toggle';
 import type { Theme } from '../types';
 
 const THEMES: { id: Theme; label: string; icon: string }[] = [
@@ -18,6 +20,12 @@ export function Settings() {
   const counts = useAlbumStore((s) => s.counts);
   const theme = useAlbumStore((s) => s.theme);
   const setTheme = useAlbumStore((s) => s.setTheme);
+  const stickAnimationEnabled = useSettings((s) => s.stickAnimationEnabled);
+  const celebrationEnabled = useSettings((s) => s.celebrationEnabled);
+  const reducedMotionEnabled = useSettings((s) => s.reducedMotionEnabled);
+  const toggleStickAnimation = useSettings((s) => s.toggleStickAnimation);
+  const toggleCelebration = useSettings((s) => s.toggleCelebration);
+  const toggleReducedMotion = useSettings((s) => s.toggleReducedMotion);
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState<'export' | null>(null);
@@ -132,6 +140,32 @@ export function Settings() {
       </section>
 
       <section className="space-y-4">
+        <h3 className="text-caps text-on-surface-variant uppercase">Animaciones</h3>
+        <div className="bg-surface-container-lowest rounded-lg border border-outline-variant overflow-hidden">
+          <ToggleRow
+            title="Animación al pegar estampas"
+            description="Pequeña animación cuando marcas una estampa como obtenida."
+            checked={stickAnimationEnabled}
+            onChange={toggleStickAnimation}
+          />
+          <ToggleRow
+            title="Celebración al completar un país"
+            description="Confeti y trofeo cuando completas las 20 estampas."
+            checked={celebrationEnabled}
+            onChange={toggleCelebration}
+            divider
+          />
+          <ToggleRow
+            title="Reducir movimiento"
+            description="Desactiva todas las animaciones (igual que la opción del sistema)."
+            checked={reducedMotionEnabled}
+            onChange={toggleReducedMotion}
+            divider
+          />
+        </div>
+      </section>
+
+      <section className="space-y-4">
         <h3 className="text-caps text-on-surface-variant uppercase">Acerca de</h3>
         <div className="bg-surface-container-lowest rounded-lg border border-outline-variant p-5">
           <div className="flex items-center gap-4">
@@ -218,5 +252,29 @@ function SettingsRow({ icon, label, onClick, tone, divider, disabled }: RowProps
         {label}
       </span>
     </button>
+  );
+}
+
+interface ToggleRowProps {
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: () => void;
+  divider?: boolean;
+}
+
+function ToggleRow({ title, description, checked, onChange, divider }: ToggleRowProps) {
+  return (
+    <div
+      className={`flex items-center gap-4 px-4 py-3 ${
+        divider ? 'border-t border-outline-variant' : ''
+      }`}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-body text-on-surface">{title}</p>
+        <p className="text-small text-on-surface-variant mt-0.5">{description}</p>
+      </div>
+      <Toggle checked={checked} onChange={onChange} label={title} />
+    </div>
   );
 }

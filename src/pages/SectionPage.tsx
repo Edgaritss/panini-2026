@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { sections, stickersBySection } from '../data/album';
 import { useAlbumStore } from '../store/useAlbumStore';
+import { useAnimations } from '../store/useAnimations';
 import { StickerCell } from '../components/StickerCell';
 import { StickerCard } from '../components/StickerCard';
 import { Icon } from '../components/Icon';
+import { neighborIndices, useGridCols } from '../hooks/useGridCols';
 
 type Mode = 'grid' | 'cards';
 
@@ -27,6 +29,33 @@ export function SectionPage() {
     }
     return { owned, duplicates };
   }, [counts, stickers]);
+
+  const cols = useGridCols();
+  const indexByStickerId = useMemo(() => {
+    const m = new Map<string, number>();
+    stickers.forEach((s, i) => m.set(s.id, i));
+    return m;
+  }, [stickers]);
+
+  // Vibrate up to 4 neighbours when a sticker in this grid gets a "stick" event.
+  const [vibrating, setVibrating] = useState<Set<number>>(() => new Set());
+  useEffect(() => {
+    if (mode !== 'grid') return;
+    let lastSeenTick = 0;
+    const unsub = useAnimations.subscribe((state) => {
+      for (const [id, tag] of state.events) {
+        if (tag.tick <= lastSeenTick) continue;
+        lastSeenTick = tag.tick;
+        if (tag.event !== 'stick') continue;
+        const idx = indexByStickerId.get(id);
+        if (idx === undefined) continue;
+        const ns = new Set(neighborIndices(idx, cols, stickers.length));
+        setVibrating(ns);
+        window.setTimeout(() => setVibrating(new Set()), 200);
+      }
+    });
+    return unsub;
+  }, [mode, cols, indexByStickerId, stickers.length]);
 
   if (!section) return <Navigate to="/" replace />;
 
@@ -99,12 +128,13 @@ export function SectionPage() {
 
       {mode === 'grid' ? (
         <section className="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm p-4 md:p-6 grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-gutter">
-          {stickers.map((st) => (
+          {stickers.map((st, i) => (
             <StickerCell
               key={st.id}
               stickerId={st.id}
               number={st.number}
               sectionCode={st.sectionCode}
+              vibrating={vibrating.has(i)}
             />
           ))}
         </section>

@@ -14,6 +14,21 @@ import {
   unmarkCelebrated,
   useCelebration,
 } from './useCelebration';
+import { useAnimations, type StickerEvent } from './useAnimations';
+import { shouldAnimate } from './useSettings';
+
+const STICK_DELAY_MS = 400;
+const BULK_STAGGER_MS = 80;
+const BULK_ANIMATION_LIMIT = 5;
+
+function dispatchStickerEvent(id: string, event: StickerEvent, delay = 0): void {
+  if (!shouldAnimate('stick')) return;
+  if (delay > 0) {
+    window.setTimeout(() => useAnimations.getState().trigger(id, event), delay);
+  } else {
+    useAnimations.getState().trigger(id, event);
+  }
+}
 
 interface AlbumState {
   counts: Record<string, number>;
@@ -152,7 +167,17 @@ function processCompletions(
   if (isFullAlbumMoment) {
     useAlbumStore.setState({ fullAlbumCelebratedAt: Date.now() });
   }
-  useCelebration.getState().trigger(last, isFullAlbumMoment);
+  if (!shouldAnimate('celebration')) return;
+  // Wait for the stick animation (if any) to finish before showing the overlay.
+  const delay = shouldAnimate('stick') ? STICK_DELAY_MS : 0;
+  if (delay > 0) {
+    window.setTimeout(
+      () => useCelebration.getState().trigger(last, isFullAlbumMoment),
+      delay,
+    );
+  } else {
+    useCelebration.getState().trigger(last, isFullAlbumMoment);
+  }
 }
 
 export const useAlbumStore = create<AlbumState>()(
@@ -175,6 +200,8 @@ export const useAlbumStore = create<AlbumState>()(
           const counts = { ...state.counts, [id]: (state.counts[id] ?? 0) + 1 };
           return { counts, ...withFirstAdded(state, counts) };
         });
+        const prev = before[id] ?? 0;
+        dispatchStickerEvent(id, prev === 0 ? 'stick' : 'duplicate');
         processCompletions(before, get().counts, false);
       },
       decrement: (id) => {
@@ -191,6 +218,9 @@ export const useAlbumStore = create<AlbumState>()(
         // but we still want to clear the "celebrated" flag if a section
         // fell out of 20/20 so it can celebrate again later.
         processCompletions(before, get().counts, true);
+        const prev = before[id] ?? 0;
+        const now = get().counts[id] ?? 0;
+        if (prev === 1 && now === 0) dispatchStickerEvent(id, 'unstick');
       },
       setCount: (id, count) => {
         const before = get().counts;
@@ -200,6 +230,11 @@ export const useAlbumStore = create<AlbumState>()(
           else counts[id] = Math.floor(count);
           return { counts, ...withFirstAdded(state, counts) };
         });
+        const prev = before[id] ?? 0;
+        const now = get().counts[id] ?? 0;
+        if (prev === 0 && now >= 1) dispatchStickerEvent(id, 'stick');
+        else if (prev >= 1 && now > prev) dispatchStickerEvent(id, 'duplicate');
+        else if (prev >= 1 && now === 0) dispatchStickerEvent(id, 'unstick');
         processCompletions(before, get().counts, false);
       },
       bulkIncrement: (ids, invalidCount = 0, silent = false) => {
@@ -221,6 +256,18 @@ export const useAlbumStore = create<AlbumState>()(
                 },
           };
         });
+
+        // Stagger sticker animations only when adding a small handful.
+        if (!silent && ids.length > 0 && ids.length <= BULK_ANIMATION_LIMIT) {
+          const running: Record<string, number> = { ...before };
+          ids.forEach((id, i) => {
+            const prev = running[id] ?? 0;
+            running[id] = prev + 1;
+            const event: StickerEvent = prev === 0 ? 'stick' : 'duplicate';
+            dispatchStickerEvent(id, event, i * BULK_STAGGER_MS);
+          });
+        }
+
         processCompletions(before, get().counts, silent);
       },
       dismissNotice: () => set({ notice: null }),
