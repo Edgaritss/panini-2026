@@ -38,6 +38,8 @@ export default {
         'on-error-container': 'var(--on-error-container)',
         owned: 'var(--owned)',
         'on-owned': 'var(--on-owned)',
+        duplicate: 'var(--duplicate)',
+        'on-duplicate': 'var(--on-duplicate)',
       },
       borderRadius: {
         DEFAULT: '0.25rem',

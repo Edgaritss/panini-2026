@@ -24,8 +24,10 @@
   --secondary: #bb0112;
   --on-secondary: #ffffff;
   --secondary-container: #e02928;
-  --secondary-fixed: #ffdad6;
-  --on-secondary-fixed-variant: #93000b;
+  /* Soft tint + dark text used by toasts and empty banners. Derived from
+     --secondary so they follow the active palette automatically. */
+  --secondary-fixed: color-mix(in srgb, var(--secondary) 18%, white);
+  --on-secondary-fixed-variant: color-mix(in srgb, var(--secondary) 75%, black);
   --surface-tint: #625d5c;
   --on-tertiary: #ffffff;
   --on-tertiary-container: #848483;
@@ -35,6 +37,8 @@
   --on-error-container: #93000a;
   --owned: #625d5c;
   --on-owned: #ffffff;
+  --duplicate: #b45309;
+  --on-duplicate: #ffffff;
   color-scheme: light;
 }
 
@@ -57,8 +61,8 @@
   --secondary: #ef4444;
   --on-secondary: #ffffff;
   --secondary-container: #dc2626;
-  --secondary-fixed: #450a0a;
-  --on-secondary-fixed-variant: #fecaca;
+  --secondary-fixed: color-mix(in srgb, var(--secondary) 22%, black);
+  --on-secondary-fixed-variant: color-mix(in srgb, var(--secondary) 80%, white);
   --surface-tint: #292524;
   --on-tertiary: #fafaf9;
   --on-tertiary-container: #a8a29e;
@@ -68,7 +72,33 @@
   --on-error-container: #fecaca;
   --owned: #22c55e;
   --on-owned: #052e16;
+  --duplicate: #f59e0b;
+  --on-duplicate: #0c0a09;
   color-scheme: dark;
+}
+
+/* Smooth crossfade only during a palette/mode swap. Scoped to elements that
+   actually shift with the theme so we don't animate every hover state. */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-transitioning,
+  html.theme-transitioning body,
+  html.theme-transitioning [class*='bg-secondary'],
+  html.theme-transitioning [class*='text-secondary'],
+  html.theme-transitioning [class*='border-secondary'],
+  html.theme-transitioning [class*='bg-owned'],
+  html.theme-transitioning [class*='text-owned'],
+  html.theme-transitioning [class*='bg-duplicate'],
+  html.theme-transitioning [class*='text-duplicate'],
+  html.theme-transitioning [class*='bg-surface'],
+  html.theme-transitioning [class*='text-on-'],
+  html.theme-transitioning [class*='border-outline'] {
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 200ms ease,
+      fill 200ms ease,
+      stroke 200ms ease;
+  }
 }
 
 html,

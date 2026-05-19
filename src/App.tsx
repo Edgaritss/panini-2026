@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAlbumStore } from './store/useAlbumStore';
+import { applyPalette, useTheme } from './store/useTheme';
 import { Home } from './pages/Home';
 import { Trades } from './pages/Trades';
 import { Stats } from './pages/Stats';
@@ -17,6 +18,8 @@ import { ProtectedRoute, PublicOnlyRoute } from './components/RouteGuards';
 
 export default function App() {
   const theme = useAlbumStore((s) => s.theme);
+  const paletteId = useTheme((s) => s.paletteId);
+  const getPalette = useTheme((s) => s.getPalette);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -30,13 +33,14 @@ export default function App() {
         'meta[name="theme-color"]:not([media])',
       );
       if (meta) meta.content = dark ? '#0c0a09' : '#f9f9f8';
+      applyPalette(getPalette(), dark ? 'dark' : 'light');
     };
     apply();
     if (theme !== 'auto') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
-  }, [theme]);
+  }, [theme, paletteId, getPalette]);
 
   return (
     <Routes>

@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAlbumStore } from '../store/useAlbumStore';
 import { useSettings } from '../store/useSettings';
+import { useTheme } from '../store/useTheme';
+import { themes, type ThemePalette } from '../lib/themes';
 import { useAuthMode } from '../store/useAuth';
 import { importJSONFile } from '../lib/exportImport';
 import { downloadExcel } from '../lib/exportExcel';
@@ -22,6 +24,8 @@ export function Settings() {
   const counts = useAlbumStore((s) => s.counts);
   const theme = useAlbumStore((s) => s.theme);
   const setTheme = useAlbumStore((s) => s.setTheme);
+  const paletteId = useTheme((s) => s.paletteId);
+  const setPalette = useTheme((s) => s.setPalette);
   const stickAnimationEnabled = useSettings((s) => s.stickAnimationEnabled);
   const celebrationEnabled = useSettings((s) => s.celebrationEnabled);
   const reducedMotionEnabled = useSettings((s) => s.reducedMotionEnabled);
@@ -131,26 +135,50 @@ export function Settings() {
 
       <section className="space-y-4">
         <h3 className="text-caps text-on-surface-variant uppercase">Apariencia</h3>
-        <div className="bg-surface-container-lowest rounded-lg border border-outline-variant p-4">
-          <div className="flex bg-surface-container p-1 rounded-lg">
-            {THEMES.map((opt) => {
-              const active = theme === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setTheme(opt.id)}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-md text-small transition-colors ${
-                    active
-                      ? 'bg-surface-bright shadow-sm text-on-surface border border-outline-variant/60'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  <Icon name={opt.icon} size={18} />
-                  {opt.label}
-                </button>
-              );
-            })}
+        <div className="bg-surface-container-lowest rounded-lg border border-outline-variant p-4 space-y-5">
+          <div>
+            <p className="text-body-strong text-on-surface mb-1">Modo</p>
+            <p className="text-small text-on-surface-variant mb-3">
+              Tema claro, oscuro o según el sistema.
+            </p>
+            <div className="flex bg-surface-container p-1 rounded-lg">
+              {THEMES.map((opt) => {
+                const active = theme === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTheme(opt.id)}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-md text-small transition-colors ${
+                      active
+                        ? 'bg-surface-bright shadow-sm text-on-surface border border-outline-variant/60'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <Icon name={opt.icon} size={18} />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-body-strong text-on-surface mb-1">Paleta de colores</p>
+            <p className="text-small text-on-surface-variant mb-3">
+              Elige los colores que mejor te van. El cambio se aplica al instante.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {themes.map((t) => (
+                <ThemeCard
+                  key={t.id}
+                  palette={t}
+                  active={paletteId === t.id}
+                  isDark={theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches)}
+                  onClick={() => setPalette(t.id)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -312,6 +340,55 @@ interface ToggleRowProps {
   checked: boolean;
   onChange: () => void;
   divider?: boolean;
+}
+
+interface ThemeCardProps {
+  palette: ThemePalette;
+  active: boolean;
+  isDark: boolean;
+  onClick: () => void;
+}
+
+function ThemeCard({ palette, active, isDark, onClick }: ThemeCardProps) {
+  const colors = isDark ? palette.dark : palette.light;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`relative text-left p-3 rounded-lg border transition-all hover:scale-[1.02] active:scale-[0.98] ${
+        active
+          ? 'border-secondary ring-2 ring-secondary/30 bg-surface-bright'
+          : 'border-outline-variant hover:border-outline bg-surface-container-lowest'
+      }`}
+    >
+      <div className="flex gap-1.5 mb-2.5">
+        <span
+          className="w-7 h-7 rounded-md"
+          style={{ backgroundColor: colors.secondary }}
+        />
+        <span
+          className="w-7 h-7 rounded-md"
+          style={{ backgroundColor: colors.owned }}
+        />
+        <span
+          className="w-7 h-7 rounded-md"
+          style={{ backgroundColor: colors.duplicate }}
+        />
+      </div>
+      <p className="text-small text-on-surface-variant leading-none mb-0.5">
+        {palette.emoji}
+      </p>
+      <p className="text-small font-body-strong text-on-surface leading-tight">
+        {palette.name}
+      </p>
+      {active && (
+        <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-secondary text-on-secondary flex items-center justify-center">
+          <Icon name="check" size={14} />
+        </span>
+      )}
+    </button>
+  );
 }
 
 function ToggleRow({ title, description, checked, onChange, divider }: ToggleRowProps) {

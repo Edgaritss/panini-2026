@@ -6,7 +6,9 @@ import 'flag-icons/css/flag-icons.min.css';
 import App from './App.tsx';
 import { useAuth } from './store/useAuth';
 import { initSync } from './lib/sync';
+import { initializeTheme } from './store/useTheme';
 
+initializeTheme();
 void useAuth.getState().initialize();
 void initSync();
 
