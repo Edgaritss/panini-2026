@@ -13,5 +13,25 @@ export interface Sticker {
 }
 
 export type FilterMode = 'all' | 'missing' | 'have' | 'duplicate';
-export type Theme = 'light' | 'dark';
-export type View = 'home' | 'trades' | 'settings';
+export type Theme = 'light' | 'dark' | 'auto';
+
+export interface QuickAddNotice {
+  added: number;
+  ids: string[];
+  invalid: number;
+  at: number;
+}
+
+export type SyncStatus =
+  | 'initializing'
+  | 'idle'
+  | 'saving'
+  | 'offline'
+  | 'error'
+  | 'disabled';
+
+export interface SyncState {
+  status: SyncStatus;
+  lastSyncedAt: number | null;
+  lastError: string | null;
+}

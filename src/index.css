@@ -1,32 +1,73 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..600,0..1,0&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: 250 250 250;
-  --fg: 10 10 10;
-  --muted: 113 113 122;
-  --surface: 255 255 255;
-  --border: 229 231 235;
-  --missing: 229 231 235;
-  --have: 16 185 129;
-  --duplicate: 245 158 11;
-  --accent: 220 38 38;
+  --background: #f9f9f8;
+  --surface: #f9f9f8;
+  --surface-bright: #ffffff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f4f4f3;
+  --surface-container: #eeeeed;
+  --surface-container-high: #e8e8e7;
+  --surface-variant: #e2e2e2;
+  --on-background: #1a1c1c;
+  --on-surface: #1a1c1c;
+  --on-surface-variant: #4d4541;
+  --outline: #7f7570;
+  --outline-variant: #d0c4be;
+  --primary: #0a0a0a;
+  --on-primary: #ffffff;
+  --secondary: #bb0112;
+  --on-secondary: #ffffff;
+  --secondary-container: #e02928;
+  --secondary-fixed: #ffdad6;
+  --on-secondary-fixed-variant: #93000b;
+  --surface-tint: #625d5c;
+  --on-tertiary: #ffffff;
+  --on-tertiary-container: #848483;
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --owned: #625d5c;
+  --on-owned: #ffffff;
   color-scheme: light;
 }
 
 .dark {
-  --bg: 10 10 10;
-  --fg: 250 250 250;
-  --muted: 161 161 170;
-  --surface: 24 24 27;
-  --border: 39 39 42;
-  --missing: 39 39 42;
-  --have: 16 185 129;
-  --duplicate: 245 158 11;
-  --accent: 239 68 68;
+  --background: #0c0a09;
+  --surface: #0c0a09;
+  --surface-bright: #1c1917;
+  --surface-container-lowest: #0c0a09;
+  --surface-container-low: #1c1917;
+  --surface-container: #1c1917;
+  --surface-container-high: #292524;
+  --surface-variant: #1c1917;
+  --on-background: #fafaf9;
+  --on-surface: #fafaf9;
+  --on-surface-variant: #a8a29e;
+  --outline: #57534e;
+  --outline-variant: #292524;
+  --primary: #fafaf9;
+  --on-primary: #0c0a09;
+  --secondary: #ef4444;
+  --on-secondary: #ffffff;
+  --secondary-container: #dc2626;
+  --secondary-fixed: #450a0a;
+  --on-secondary-fixed-variant: #fecaca;
+  --surface-tint: #292524;
+  --on-tertiary: #fafaf9;
+  --on-tertiary-container: #a8a29e;
+  --error: #f87171;
+  --on-error: #450a0a;
+  --error-container: #450a0a;
+  --on-error-container: #fecaca;
+  --owned: #22c55e;
+  --on-owned: #052e16;
   color-scheme: dark;
 }
 
@@ -37,8 +78,8 @@ body,
 }
 
 body {
-  background-color: rgb(var(--bg));
-  color: rgb(var(--fg));
+  background-color: var(--background);
+  color: var(--on-background);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -56,4 +97,62 @@ a {
 
 input[type='search']::-webkit-search-cancel-button {
   cursor: pointer;
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.toast-anim {
+  animation: toast-in 0.2s ease-out both;
+}
+
+@keyframes modal-in {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-anim {
+  animation: modal-in 0.18s ease-out both;
 }

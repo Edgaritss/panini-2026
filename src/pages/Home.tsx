@@ -4,12 +4,15 @@ import { sections, stickersBySection } from '../data/album';
 import { ProgressBar } from '../components/ProgressBar';
 import { Filters } from '../components/Filters';
 import { SectionCard } from '../components/SectionCard';
+import { EmptyBanner } from '../components/EmptyBanner';
 import type { Sticker } from '../types';
 
 export function Home() {
   const counts = useAlbumStore((s) => s.counts);
   const filter = useAlbumStore((s) => s.filter);
   const search = useAlbumStore((s) => s.search);
+
+  const isEmpty = Object.keys(counts).length === 0;
 
   const visibleSections = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -49,20 +52,21 @@ export function Home() {
     .filter(Boolean);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-8">
       <ProgressBar />
+      {isEmpty && <EmptyBanner />}
       <Filters />
-      <div className="space-y-2">
+      <section className="flex flex-col gap-3">
         {rendered.length > 0 ? (
           rendered
         ) : (
-          <div className="text-center text-sm text-muted py-8">
+          <div className="text-center text-body text-on-surface-variant py-12">
             {search.trim()
               ? 'Sin secciones que coincidan con la búsqueda.'
               : 'Sin secciones con estampas en este filtro.'}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

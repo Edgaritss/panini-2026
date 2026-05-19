@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Local env (Vite). Keep .env.example checked in.
+.env
+.env.*
+!.env.example
+
+# Stitch design reference assets (regenerable via MCP)
+stitch/
+
+# Playwright MCP scratch
+.playwright-mcp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

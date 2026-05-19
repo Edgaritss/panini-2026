@@ -1,23 +1,48 @@
 import { useRef, useState } from 'react';
 import { useAlbumStore } from '../store/useAlbumStore';
-import { downloadJSON, importJSONFile } from '../lib/exportImport';
-import { TOTAL } from '../data/album';
+import { importJSONFile } from '../lib/exportImport';
+import { downloadExcel } from '../lib/exportExcel';
+import { TOTAL, stickers } from '../data/album';
+import { Icon } from '../components/Icon';
+import { Modal } from '../components/Modal';
+import type { Theme } from '../types';
+
+const THEMES: { id: Theme; label: string; icon: string }[] = [
+  { id: 'light', label: 'Claro', icon: 'light_mode' },
+  { id: 'dark', label: 'Oscuro', icon: 'dark_mode' },
+  { id: 'auto', label: 'Auto', icon: 'hdr_auto' },
+];
 
 export function Settings() {
   const reset = useAlbumStore((s) => s.reset);
+  const counts = useAlbumStore((s) => s.counts);
+  const theme = useAlbumStore((s) => s.theme);
+  const setTheme = useAlbumStore((s) => s.setTheme);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState<'export' | null>(null);
   const [importMsg, setImportMsg] = useState<{
     tone: 'ok' | 'error';
     text: string;
   } | null>(null);
 
-  function handleReset() {
-    if (confirmStep === 0) return setConfirmStep(1);
-    if (confirmStep === 1) return setConfirmStep(2);
-    reset();
-    setConfirmStep(0);
+  async function handleExport() {
+    try {
+      setBusy('export');
+      await downloadExcel();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido';
+      setImportMsg({ tone: 'error', text: `Error al exportar: ${msg}` });
+      window.setTimeout(() => setImportMsg(null), 5000);
+    } finally {
+      setBusy(null);
+    }
   }
+
+  const owned = stickers.reduce(
+    (acc, st) => acc + ((counts[st.id] ?? 0) >= 1 ? 1 : 0),
+    0,
+  );
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -27,7 +52,7 @@ export function Settings() {
       const n = await importJSONFile(file);
       setImportMsg({
         tone: 'ok',
-        text: `Importado: ${n} ${n === 1 ? 'estampa registrada' : 'estampas registradas'} (${file.name}).`,
+        text: `Importado: ${n} ${n === 1 ? 'estampa' : 'estampas'} (${file.name}).`,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
@@ -37,28 +62,30 @@ export function Settings() {
   }
 
   return (
-    <div className="space-y-3">
-      <section className="bg-surface border border-border rounded-xl p-4">
-        <h2 className="font-semibold mb-1">Respaldo</h2>
-        <p className="text-sm text-muted mb-3">
-          Exporta o restaura tu progreso como archivo JSON. Recomendado cuando cambias
-          de navegador o dispositivo.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={downloadJSON}
-            className="min-h-[44px] px-4 rounded-xl bg-fg text-bg font-medium hover:opacity-90"
-          >
-            Exportar JSON
-          </button>
-          <button
-            type="button"
+    <div className="max-w-2xl mx-auto w-full flex flex-col gap-10">
+      <h1 className="text-display-l text-on-surface">Ajustes</h1>
+
+      <section className="space-y-4">
+        <h3 className="text-caps text-on-surface-variant uppercase">Datos</h3>
+        <div className="bg-surface-container-lowest rounded-lg border border-outline-variant overflow-hidden">
+          <SettingsRow
+            icon="table_chart"
+            label={busy === 'export' ? 'Generando Excel…' : 'Exportar Excel (.xlsx)'}
+            onClick={handleExport}
+            disabled={busy === 'export'}
+          />
+          <SettingsRow
+            icon="upload"
+            label="Importar archivo (.json)"
             onClick={() => fileRef.current?.click()}
-            className="min-h-[44px] px-4 rounded-xl bg-surface border border-border font-medium hover:bg-bg/60"
-          >
-            Importar JSON
-          </button>
+            divider
+          />
+          <SettingsRow
+            icon="delete_forever"
+            label="Reiniciar colección"
+            tone="danger"
+            onClick={() => setConfirmOpen(true)}
+          />
           <input
             ref={fileRef}
             type="file"
@@ -69,55 +96,127 @@ export function Settings() {
         </div>
         {importMsg && (
           <p
-            className={`text-sm mt-3 ${importMsg.tone === 'ok' ? 'text-have' : 'text-accent'}`}
+            className={`text-small ${
+              importMsg.tone === 'ok' ? 'text-owned' : 'text-secondary'
+            }`}
           >
             {importMsg.text}
           </p>
         )}
       </section>
 
-      <section className="bg-surface border border-accent/40 rounded-xl p-4">
-        <h2 className="font-semibold mb-1 text-accent">Zona de peligro</h2>
-        <p className="text-sm text-muted mb-3">
-          Borrar todo tu progreso de las {TOTAL} estampas. Esta acción no se puede
-          deshacer.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleReset}
-            className={`min-h-[44px] px-4 rounded-xl font-medium transition-colors ${
-              confirmStep === 0
-                ? 'bg-surface border border-accent text-accent hover:bg-accent/5'
-                : confirmStep === 1
-                  ? 'bg-accent/15 border border-accent text-accent'
-                  : 'bg-accent text-white'
-            }`}
-          >
-            {confirmStep === 0 && 'Resetear álbum'}
-            {confirmStep === 1 && '¿Seguro? Toca para confirmar'}
-            {confirmStep === 2 && 'Confirmar definitivamente'}
-          </button>
-          {confirmStep > 0 && (
-            <button
-              type="button"
-              onClick={() => setConfirmStep(0)}
-              className="min-h-[44px] px-3 text-sm text-muted hover:text-fg"
-            >
-              Cancelar
-            </button>
-          )}
+      <section className="space-y-4">
+        <h3 className="text-caps text-on-surface-variant uppercase">Apariencia</h3>
+        <div className="bg-surface-container-lowest rounded-lg border border-outline-variant p-4">
+          <div className="flex bg-surface-container p-1 rounded-lg">
+            {THEMES.map((opt) => {
+              const active = theme === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setTheme(opt.id)}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-md text-small transition-colors ${
+                    active
+                      ? 'bg-surface-bright shadow-sm text-on-surface border border-outline-variant/60'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <Icon name={opt.icon} size={18} />
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      <section className="bg-surface border border-border rounded-xl p-4">
-        <h2 className="font-semibold mb-1">Acerca</h2>
-        <p className="text-sm text-muted">
-          Panini · Mundial 2026 — organizador personal de estampas.
-          {' '}49 secciones × 20 = {TOTAL} estampas. Datos guardados localmente en este
-          navegador.
-        </p>
+      <section className="space-y-4">
+        <h3 className="text-caps text-on-surface-variant uppercase">Acerca de</h3>
+        <div className="bg-surface-container-lowest rounded-lg border border-outline-variant p-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-secondary rounded flex items-center justify-center text-on-secondary text-heading font-semibold">
+              M
+            </div>
+            <div>
+              <h4 className="text-body-strong text-on-surface">Mundial '26 Tracker</h4>
+              <p className="text-small text-on-surface-variant">
+                {TOTAL} estampas · 49 secciones · Datos guardados localmente.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
+
+      <p className="text-center text-small text-on-surface-variant/70">
+        Diseñado para coleccionistas.
+      </p>
+
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="¿Reiniciar toda la colección?"
+        description={
+          <>
+            Esta acción no se puede deshacer. Se perderán las{' '}
+            <strong>{owned}</strong> estampas registradas.
+          </>
+        }
+        icon={{ name: 'warning', tone: 'danger' }}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(false)}
+              className="px-4 py-2 rounded border border-outline-variant bg-surface text-on-surface font-body-strong hover:bg-surface-container transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setConfirmOpen(false);
+              }}
+              className="px-4 py-2 rounded bg-secondary text-on-secondary font-body-strong hover:bg-secondary-container transition-colors shadow-sm"
+            >
+              Sí, reiniciar
+            </button>
+          </>
+        }
+      />
     </div>
+  );
+}
+
+interface RowProps {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  tone?: 'danger';
+  divider?: boolean;
+  disabled?: boolean;
+}
+
+function SettingsRow({ icon, label, onClick, tone, divider, disabled }: RowProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed ${
+        divider ? 'border-b border-outline-variant' : ''
+      } ${tone === 'danger' ? 'border-t border-outline-variant' : ''}`}
+    >
+      <Icon
+        name={icon}
+        className={tone === 'danger' ? 'text-secondary' : 'text-on-surface-variant'}
+      />
+      <span
+        className={`text-body ${tone === 'danger' ? 'text-secondary' : 'text-on-surface'}`}
+      >
+        {label}
+      </span>
+    </button>
   );
 }

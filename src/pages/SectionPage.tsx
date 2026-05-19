@@ -1,0 +1,152 @@
+import { useMemo, useState } from 'react';
+import { Link, Navigate, useParams } from 'react-router-dom';
+import { sections, stickersBySection } from '../data/album';
+import { useAlbumStore } from '../store/useAlbumStore';
+import { StickerCell } from '../components/StickerCell';
+import { StickerCard } from '../components/StickerCard';
+import { Icon } from '../components/Icon';
+
+type Mode = 'grid' | 'cards';
+
+export function SectionPage() {
+  const { code } = useParams<{ code: string }>();
+  const counts = useAlbumStore((s) => s.counts);
+  const [mode, setMode] = useState<Mode>('grid');
+
+  const idx = sections.findIndex((s) => s.code === code);
+  const section = idx >= 0 ? sections[idx] : null;
+  const stickers = section ? (stickersBySection.get(section.code) ?? []) : [];
+
+  const { owned, duplicates } = useMemo(() => {
+    let owned = 0;
+    let duplicates = 0;
+    for (const st of stickers) {
+      const c = counts[st.id] ?? 0;
+      if (c >= 1) owned += 1;
+      if (c > 1) duplicates += c - 1;
+    }
+    return { owned, duplicates };
+  }, [counts, stickers]);
+
+  if (!section) return <Navigate to="/" replace />;
+
+  const total = stickers.length;
+  const pct = total ? Math.round((owned / total) * 100) : 0;
+  const prev = sections[(idx - 1 + sections.length) % sections.length];
+  const next = sections[(idx + 1) % sections.length];
+
+  const subtitle =
+    section.group === null
+      ? `Portada · ${owned} de ${total} estampas`
+      : `Grupo ${section.group} · ${owned} de ${total} estampas`;
+
+  const longName =
+    section.code === 'FWC' ? 'FIFA World Cup 2026' : section.name;
+
+  return (
+    <div className="flex flex-col gap-8">
+      <Link
+        to="/"
+        className="inline-flex items-center gap-2 self-start text-body-strong text-on-surface-variant hover:text-secondary transition-colors"
+      >
+        <Icon name="arrow_back" size={18} />
+        Volver al álbum
+      </Link>
+
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="min-w-0">
+          <p className="font-mono text-on-surface-variant tracking-wide text-[56px] leading-none">
+            {section.code}
+          </p>
+          <h1 className="text-display-l text-on-surface mt-2">{longName}</h1>
+          <p className="text-body text-on-surface-variant mt-1">{subtitle}</p>
+          {duplicates > 0 && (
+            <p className="text-small text-secondary mt-1">
+              {duplicates} {duplicates === 1 ? 'repetida' : 'repetidas'} disponibles para intercambio
+            </p>
+          )}
+          <div className="mt-4 flex items-center gap-3 max-w-lg">
+            <div className="flex-1 h-2 bg-surface-variant rounded-full overflow-hidden">
+              <div
+                className="h-full bg-secondary rounded-full transition-all duration-300"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-body-strong text-on-surface tabular-nums w-12 text-right">
+              {pct}%
+            </span>
+          </div>
+        </div>
+
+        <div className="self-start lg:self-end bg-surface-container p-1 rounded-lg inline-flex">
+          {(['grid', 'cards'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`px-4 py-2 rounded-md text-small inline-flex items-center gap-2 transition-colors ${
+                mode === m
+                  ? 'bg-surface-bright text-on-surface shadow-sm border border-outline-variant/60'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Icon name={m === 'grid' ? 'grid_view' : 'view_agenda'} size={18} />
+              {m === 'grid' ? 'Grid' : 'Cards'}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {mode === 'grid' ? (
+        <section className="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm p-4 md:p-6 grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-gutter">
+          {stickers.map((st) => (
+            <StickerCell
+              key={st.id}
+              stickerId={st.id}
+              number={st.number}
+              sectionCode={st.sectionCode}
+            />
+          ))}
+        </section>
+      ) : (
+        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {stickers.map((st) => (
+            <StickerCard
+              key={st.id}
+              stickerId={st.id}
+              number={st.number}
+              sectionCode={st.sectionCode}
+            />
+          ))}
+        </section>
+      )}
+
+      <nav className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Link
+          to={`/seccion/${prev.code}`}
+          className="flex items-center gap-3 p-4 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-bright transition-colors"
+        >
+          <Icon name="arrow_back" size={20} className="text-on-surface-variant" />
+          <div className="min-w-0">
+            <p className="text-caps text-on-surface-variant uppercase">Anterior</p>
+            <p className="text-body-strong text-on-surface truncate">
+              {prev.code} · {prev.code === 'FWC' ? 'FIFA World Cup 2026' : prev.name}
+            </p>
+          </div>
+        </Link>
+        <Link
+          to={`/seccion/${next.code}`}
+          className="flex items-center gap-3 p-4 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-bright transition-colors justify-end text-right"
+        >
+          <div className="min-w-0">
+            <p className="text-caps text-on-surface-variant uppercase">Siguiente</p>
+            <p className="text-body-strong text-on-surface truncate">
+              {next.code} · {next.code === 'FWC' ? 'FIFA World Cup 2026' : next.name}
+            </p>
+          </div>
+          <Icon name="arrow_forward" size={20} className="text-on-surface-variant" />
+        </Link>
+      </nav>
+    </div>
+  );
+}

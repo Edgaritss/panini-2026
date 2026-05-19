@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom';
 import { useAlbumStore } from '../store/useAlbumStore';
 import { StickerCell } from './StickerCell';
+import { Icon } from './Icon';
 import type { Section, Sticker } from '../types';
 
 interface Props {
@@ -22,58 +24,78 @@ export function SectionCard({ section, allStickers, visibleStickers }: Props) {
   }
   const total = allStickers.length;
   const complete = owned === total;
+  const title =
+    section.code === 'FWC'
+      ? `${section.code} · FIFA World Cup 2026`
+      : `${section.code} · ${section.name}`;
 
   return (
-    <article className="bg-surface border border-border rounded-xl overflow-hidden">
-      <button
-        type="button"
-        onClick={() => toggle(section.code)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 min-h-[56px] hover:bg-bg/60 transition-colors text-left"
+    <article
+      className={`bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm overflow-hidden ${
+        complete ? 'relative' : ''
+      }`}
+    >
+      {complete && (
+        <span
+          className="absolute left-0 top-0 bottom-0 w-1 bg-owned"
+          aria-hidden
+        />
+      )}
+      <div
+        className={`flex items-center justify-between gap-3 p-4 ${
+          complete ? 'pl-5' : ''
+        } ${open ? 'border-b border-outline-variant' : ''}`}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-xs font-mono font-semibold text-muted w-10 shrink-0">
-            {section.code}
-          </span>
-          <div className="min-w-0">
-            <div className="font-medium leading-tight truncate">
-              {section.name}
-            </div>
-            <div className="text-xs text-muted">
-              {section.group ? `Grupo ${section.group}` : 'Portada / Trofeo'}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <Link
+          to={`/seccion/${section.code}`}
+          className="flex items-center gap-3 min-w-0 -mx-2 -my-2 px-2 py-2 rounded hover:bg-surface-bright transition-colors"
+        >
+          <h2 className="font-semibold text-heading text-on-surface truncate">
+            {title}
+          </h2>
+          {complete && (
+            <Icon name="check_circle" filled className="text-owned shrink-0" size={20} />
+          )}
+        </Link>
+        <button
+          type="button"
+          onClick={() => toggle(section.code)}
+          aria-expanded={open}
+          aria-label={`${open ? 'Colapsar' : 'Expandir'} ${section.code}`}
+          className="flex items-center gap-3 shrink-0 -mx-2 -my-2 px-2 py-2 rounded hover:bg-surface-bright transition-colors"
+        >
           {duplicates > 0 && (
-            <span className="text-xs px-1.5 py-0.5 rounded-md bg-duplicate/15 text-duplicate font-medium">
+            <span className="text-caps text-secondary bg-secondary-fixed px-2 py-0.5 rounded-full uppercase">
               +{duplicates}
             </span>
           )}
           <span
-            className={`text-sm tabular-nums ${complete ? 'text-have font-semibold' : 'text-muted'}`}
+            className={`text-body-strong tabular-nums ${
+              complete ? 'text-owned' : 'text-on-surface-variant'
+            }`}
           >
             {owned}/{total}
           </span>
-          <svg
-            className={`w-4 h-4 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-          </svg>
-        </div>
-      </button>
+          <Icon
+            name={open ? 'expand_less' : 'expand_more'}
+            className="text-on-surface-variant"
+          />
+        </button>
+      </div>
       {open && visibleStickers.length > 0 && (
-        <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 p-3 pt-2 border-t border-border">
+        <div className="p-4 grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-gutter">
           {visibleStickers.map((st) => (
-            <StickerCell key={st.id} stickerId={st.id} number={st.number} />
+            <StickerCell
+              key={st.id}
+              stickerId={st.id}
+              number={st.number}
+              sectionCode={st.sectionCode}
+            />
           ))}
         </div>
       )}
       {open && visibleStickers.length === 0 && (
-        <div className="px-4 py-3 text-xs text-muted border-t border-border">
+        <div className="px-4 py-3 text-small text-on-surface-variant">
           Nada que mostrar con el filtro actual.
         </div>
       )}

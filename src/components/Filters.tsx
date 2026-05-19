@@ -1,5 +1,6 @@
 import { useAlbumStore } from '../store/useAlbumStore';
 import type { FilterMode } from '../types';
+import { Icon } from './Icon';
 
 const FILTERS: { id: FilterMode; label: string }[] = [
   { id: 'all', label: 'Todas' },
@@ -17,8 +18,8 @@ export function Filters() {
   const collapseAll = useAlbumStore((s) => s.collapseAll);
 
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-none">
+    <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-outline-variant pb-4">
+      <div className="flex gap-2 overflow-x-auto -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 pb-1 md:pb-0">
         {FILTERS.map((f) => {
           const active = filter === f.id;
           return (
@@ -26,10 +27,10 @@ export function Filters() {
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
-              className={`min-h-[36px] px-3 rounded-full text-sm whitespace-nowrap transition-colors ${
+              className={`px-4 py-1.5 rounded-full whitespace-nowrap text-body-strong transition-colors ${
                 active
-                  ? 'bg-fg text-bg'
-                  : 'bg-surface border border-border text-fg hover:bg-bg/60'
+                  ? 'bg-primary text-on-primary'
+                  : 'bg-surface-container text-on-surface hover:bg-surface-container-high'
               }`}
             >
               {f.label}
@@ -37,30 +38,41 @@ export function Filters() {
           );
         })}
       </div>
-      <div className="flex gap-2">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar: México, MEX, A..."
-          className="flex-1 min-h-[40px] px-3 rounded-xl bg-surface border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 placeholder:text-muted"
-          aria-label="Buscar sección"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 md:w-64 md:flex-none">
+          <Icon
+            name="search"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+            size={18}
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar sección…"
+            className="w-full h-10 pl-10 pr-3 bg-surface-container rounded-full text-body text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-secondary"
+            aria-label="Buscar sección"
+          />
+        </div>
         <button
           type="button"
           onClick={expandAll}
-          className="min-h-[40px] px-3 rounded-xl bg-surface border border-border text-sm hover:bg-bg/60"
+          className="h-10 w-10 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+          aria-label="Expandir todo"
+          title="Expandir todo"
         >
-          Expandir
+          <Icon name="unfold_more" size={20} />
         </button>
         <button
           type="button"
           onClick={collapseAll}
-          className="min-h-[40px] px-3 rounded-xl bg-surface border border-border text-sm hover:bg-bg/60"
+          className="h-10 w-10 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+          aria-label="Colapsar todo"
+          title="Colapsar todo"
         >
-          Colapsar
+          <Icon name="unfold_less" size={20} />
         </button>
       </div>
-    </div>
+    </section>
   );
 }
