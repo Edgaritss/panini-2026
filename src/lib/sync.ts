@@ -1,26 +1,28 @@
-import {
-  COLLECTION_ID,
-  supabase,
-  supabaseConfigured,
-  type CollectionRow,
-} from './supabase';
+import { supabase, supabaseConfigured, type UserCollectionRow } from './supabase';
 import { useAlbumStore } from '../store/useAlbumStore';
+import { useAuth } from '../store/useAuth';
 import type { SyncState } from '../types';
 
 const DEBOUNCE_MS = 600;
 let saveTimer: number | undefined;
 let initialized = false;
 let pushing = false;
+let lastUserId: string | null = null;
+let switching = false;
 
 function setStatus(patch: Partial<SyncState>): void {
   useAlbumStore.getState().setSync(patch);
+}
+
+function currentUserId(): string | null {
+  return useAuth.getState().user?.id ?? null;
 }
 
 export async function initSync(): Promise<void> {
   if (initialized) return;
   initialized = true;
 
-  // Always subscribe to mutations so we mark dirty + schedule save.
+  // Push debounced when the local data changes (only if a user is authed).
   useAlbumStore.subscribe((state, prev) => {
     if (
       state.counts === prev.counts &&
@@ -28,7 +30,14 @@ export async function initSync(): Promise<void> {
     ) {
       return;
     }
+    if (switching || !currentUserId()) return;
     scheduleSave();
+  });
+
+  // React to auth changes.
+  useAuth.subscribe((state, prev) => {
+    if (state.user?.id === prev.user?.id) return;
+    void handleUserChange(state.user?.id ?? null);
   });
 
   if (!supabaseConfigured) {
@@ -37,34 +46,66 @@ export async function initSync(): Promise<void> {
   }
 
   window.addEventListener('online', () => {
-    void saveNow();
+    if (currentUserId()) void saveNow();
   });
   window.addEventListener('offline', () => {
     setStatus({ status: 'offline' });
   });
 
+  // Take the current snapshot (may be already authed via persisted session).
+  await handleUserChange(currentUserId());
+}
+
+async function handleUserChange(userId: string | null): Promise<void> {
+  if (userId === lastUserId) return;
+  lastUserId = userId;
+  if (saveTimer) {
+    window.clearTimeout(saveTimer);
+    saveTimer = undefined;
+  }
+  // Clear any in-memory data from a previous user without triggering a save.
+  switching = true;
+  useAlbumStore.setState({
+    counts: {},
+    firstAddedAt: null,
+    localUpdatedAt: 0,
+    notice: null,
+  });
+  switching = false;
+
+  if (!userId) {
+    setStatus({ status: 'disabled', lastSyncedAt: null, lastError: null });
+    return;
+  }
+  if (!supabaseConfigured) {
+    setStatus({ status: 'disabled' });
+    return;
+  }
   if (!navigator.onLine) {
     setStatus({ status: 'offline' });
     return;
   }
-
-  await hydrate();
+  await hydrate(userId);
 }
 
-async function hydrate(): Promise<void> {
-  if (!supabase || !COLLECTION_ID) return;
+async function hydrate(userId: string): Promise<void> {
+  if (!supabase) return;
   setStatus({ status: 'initializing' });
   const { data, error } = await supabase
-    .from('collections')
-    .select('id, owned, first_added_at, updated_at')
-    .eq('id', COLLECTION_ID)
-    .single<CollectionRow>();
+    .from('user_collections')
+    .select('user_id, owned, first_added_at, created_at, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle<UserCollectionRow>();
 
-  if (error || !data) {
-    setStatus({
-      status: 'error',
-      lastError: error?.message ?? 'Fila no encontrada',
-    });
+  if (error) {
+    setStatus({ status: 'error', lastError: error.message });
+    return;
+  }
+
+  if (!data) {
+    // Trigger should have created the row at signup. If it's missing, push current state to create it.
+    setStatus({ status: 'saving' });
+    await saveNow();
     return;
   }
 
@@ -72,23 +113,15 @@ async function hydrate(): Promise<void> {
   const remoteFirstAdded = data.first_added_at
     ? new Date(data.first_added_at).getTime()
     : null;
-  const localUpdatedAt = useAlbumStore.getState().localUpdatedAt;
-
-  if (remoteUpdatedAt >= localUpdatedAt) {
-    useAlbumStore.getState().hydrateFromRemote({
-      counts: data.owned ?? {},
-      firstAddedAt: remoteFirstAdded,
-      remoteUpdatedAt,
-    });
-  } else {
-    // Local is newer → push it up.
-    setStatus({ status: 'idle', lastSyncedAt: remoteUpdatedAt });
-    void saveNow();
-  }
+  useAlbumStore.getState().hydrateFromRemote({
+    counts: data.owned ?? {},
+    firstAddedAt: remoteFirstAdded,
+    remoteUpdatedAt,
+  });
 }
 
 function scheduleSave(): void {
-  if (!supabaseConfigured) return;
+  if (!supabaseConfigured || !currentUserId()) return;
   if (saveTimer) window.clearTimeout(saveTimer);
   setStatus({ status: 'saving' });
   saveTimer = window.setTimeout(() => {
@@ -97,7 +130,9 @@ function scheduleSave(): void {
 }
 
 export async function saveNow(): Promise<void> {
-  if (!supabase || !COLLECTION_ID) return;
+  if (!supabase) return;
+  const userId = currentUserId();
+  if (!userId) return;
   if (pushing) return;
   if (saveTimer) {
     window.clearTimeout(saveTimer);
@@ -111,19 +146,20 @@ export async function saveNow(): Promise<void> {
   pushing = true;
   setStatus({ status: 'saving' });
   const state = useAlbumStore.getState();
-  const updatedAt = new Date().toISOString();
   const firstAddedAt = state.firstAddedAt
     ? new Date(state.firstAddedAt).toISOString()
     : null;
 
   const { error } = await supabase
-    .from('collections')
-    .update({
-      owned: state.counts,
-      first_added_at: firstAddedAt,
-      updated_at: updatedAt,
-    })
-    .eq('id', COLLECTION_ID);
+    .from('user_collections')
+    .upsert(
+      {
+        user_id: userId,
+        owned: state.counts,
+        first_added_at: firstAddedAt,
+      },
+      { onConflict: 'user_id' },
+    );
 
   pushing = false;
 

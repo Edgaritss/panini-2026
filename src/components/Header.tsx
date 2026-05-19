@@ -2,9 +2,10 @@ import { Link, NavLink } from 'react-router-dom';
 import { useAlbumStore } from '../store/useAlbumStore';
 import { Icon } from './Icon';
 import { SyncIndicator } from './SyncIndicator';
+import { UserMenu } from './UserMenu';
 
 const tabs = [
-  { to: '/', label: 'Álbum', end: true },
+  { to: '/album', label: 'Álbum', end: true },
   { to: '/cambios', label: 'Cambios', end: false },
   { to: '/estadisticas', label: 'Estadísticas', end: false },
   { to: '/ajustes', label: 'Ajustes', end: false },
@@ -27,7 +28,7 @@ export function Header() {
       <div className="max-w-max-width mx-auto w-full px-margin-mobile md:px-margin-desktop">
         <div className="flex items-center justify-between h-16 gap-4">
           <Link
-            to="/"
+            to="/album"
             className="flex items-center gap-3 text-on-surface"
             aria-label="Ir al álbum"
           >
@@ -77,6 +78,7 @@ export function Header() {
             >
               <Icon name={effective === 'dark' ? 'light_mode' : 'dark_mode'} />
             </button>
+            <UserMenu />
           </div>
         </div>
 
