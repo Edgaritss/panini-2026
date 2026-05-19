@@ -6,6 +6,7 @@ import { useAnimations } from '../store/useAnimations';
 import { StickerCell } from '../components/StickerCell';
 import { StickerCard } from '../components/StickerCard';
 import { Icon } from '../components/Icon';
+import { FlagCircle } from '../components/FlagCircle';
 import { neighborIndices, useGridCols } from '../hooks/useGridCols';
 
 type Mode = 'grid' | 'cards';
@@ -83,27 +84,43 @@ export function SectionPage() {
       </Link>
 
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div className="min-w-0">
-          <p className="font-mono text-on-surface-variant tracking-wide text-[56px] leading-none">
-            {section.code}
-          </p>
-          <h1 className="text-display-l text-on-surface mt-2">{longName}</h1>
-          <p className="text-body text-on-surface-variant mt-1">{subtitle}</p>
-          {duplicates > 0 && (
-            <p className="text-small text-secondary mt-1">
-              {duplicates} {duplicates === 1 ? 'repetida' : 'repetidas'} disponibles para intercambio
-            </p>
-          )}
-          <div className="mt-4 flex items-center gap-3 max-w-lg">
-            <div className="flex-1 h-2 bg-surface-variant rounded-full overflow-hidden">
-              <div
-                className="h-full bg-secondary rounded-full transition-all duration-300"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <span className="text-body-strong text-on-surface tabular-nums w-12 text-right">
-              {pct}%
+        <div className="flex items-start gap-4 min-w-0">
+          {section.code === 'FWC' ? (
+            <span
+              aria-hidden
+              className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-secondary text-on-secondary inline-flex items-center justify-center shrink-0 shadow-sm"
+            >
+              <Icon name="emoji_events" filled size={36} />
             </span>
+          ) : (
+            <FlagCircle
+              code={section.code}
+              size={80}
+              className="md:!w-20 md:!h-20 shadow-sm shrink-0"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-on-surface-variant tracking-wide text-[44px] md:text-[56px] leading-none">
+              {section.code}
+            </p>
+            <h1 className="text-display-l text-on-surface mt-2">{longName}</h1>
+            <p className="text-body text-on-surface-variant mt-1">{subtitle}</p>
+            {duplicates > 0 && (
+              <p className="text-small text-secondary mt-1">
+                {duplicates} {duplicates === 1 ? 'repetida' : 'repetidas'} disponibles para intercambio
+              </p>
+            )}
+            <div className="mt-4 flex items-center gap-3 max-w-lg">
+              <div className="flex-1 h-2 bg-surface-variant rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-secondary rounded-full transition-all duration-300"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-body-strong text-on-surface tabular-nums w-12 text-right">
+                {pct}%
+              </span>
+            </div>
           </div>
         </div>
 
