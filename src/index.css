@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 250 250 250;
+  --fg: 10 10 10;
+  --muted: 113 113 122;
+  --surface: 255 255 255;
+  --border: 229 231 235;
+  --missing: 229 231 235;
+  --have: 16 185 129;
+  --duplicate: 245 158 11;
+  --accent: 220 38 38;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 10 10 10;
+  --fg: 250 250 250;
+  --muted: 161 161 170;
+  --surface: 24 24 27;
+  --border: 39 39 42;
+  --missing: 39 39 42;
+  --have: 16 185 129;
+  --duplicate: 245 158 11;
+  --accent: 239 68 68;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+[role='button'],
+input,
+a {
+  touch-action: manipulation;
+}
+
+input[type='search']::-webkit-search-cancel-button {
+  cursor: pointer;
+}
