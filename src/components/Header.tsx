@@ -7,6 +7,7 @@ import { UserMenu } from './UserMenu';
 const tabs = [
   { to: '/album', label: 'Álbum', end: true },
   { to: '/cambios', label: 'Cambios', end: false },
+  { to: '/comparar', label: 'Comparar', end: false },
   { to: '/estadisticas', label: 'Estadísticas', end: false },
   { to: '/ajustes', label: 'Ajustes', end: false },
 ];

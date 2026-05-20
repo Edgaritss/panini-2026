@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAlbumStore } from '../store/useAlbumStore';
 import {
   NEAR_COMPLETE_THRESHOLD,
@@ -14,6 +15,7 @@ import {
 import type { Sticker } from '../types';
 import { Icon } from '../components/Icon';
 import { TradesFiltersDrawer, PORTADA_KEY } from '../components/TradesFiltersDrawer';
+import { formatTradesList, type FormatBucket } from '../lib/formatTradesList';
 
 type Item = { id: string; label: string; count: number };
 type Bucket = { code: string; sectionName: string; items: Item[] };
@@ -84,16 +86,30 @@ export function Trades() {
 
   async function copy(side: 'missing' | 'duplicates') {
     const buckets = side === 'missing' ? built.missing : built.duplicates;
-    const header = side === 'missing' ? 'Me faltan' : 'Tengo repetidas';
-    const renderItem = (i: Item) =>
-      side === 'duplicates' && i.count > 1 ? `${i.label} x${i.count}` : i.label;
+    const total = side === 'missing' ? built.totalMissing : built.totalDuplicates;
+    const formatBuckets: FormatBucket[] = buckets.map((b) => ({
+      code: b.code,
+      name: b.sectionName,
+      items: b.items.map((i) => ({ id: i.id, count: i.count })),
+    }));
     const filterSuffix = buildFilterSuffix({
       search,
       status,
       groups,
       continents,
     });
-    const text = buildText(header, buckets, renderItem, filterSuffix);
+    const text = formatTradesList({
+      kind: side,
+      buckets: formatBuckets,
+      total,
+      filterSuffix: filterSuffix.length > 0 ? filterSuffix : undefined,
+    });
+    await copyToClipboard(text);
+    setCopiedSide(side);
+    window.setTimeout(() => setCopiedSide(null), 1500);
+  }
+
+  async function copyToClipboard(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -107,8 +123,6 @@ export function Trades() {
         document.body.removeChild(ta);
       }
     }
-    setCopiedSide(side);
-    window.setTimeout(() => setCopiedSide(null), 1500);
   }
 
   function removeChip(chipKey: ActiveChip['key']) {
@@ -133,11 +147,20 @@ export function Trades() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-display-l text-on-surface">Intercambios</h1>
-        <p className="text-body text-on-surface-variant">
-          Listo para copiar y compartir.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-display-l text-on-surface">Intercambios</h1>
+          <p className="text-body text-on-surface-variant">
+            Listo para copiar y compartir.
+          </p>
+        </div>
+        <Link
+          to="/comparar"
+          className="inline-flex items-center gap-2 px-4 h-11 rounded-full bg-secondary text-on-secondary text-body-strong hover:bg-secondary-container transition-colors self-start md:self-auto"
+        >
+          <Icon name="swap_horiz" size={18} />
+          Comparar con alguien más
+        </Link>
       </div>
 
       {/* Search + Filters button */}
@@ -491,8 +514,7 @@ function buildFilterSuffix(filters: FilterParams): string {
     parts.push(continentLabels[c]);
   }
   if (filters.search.trim()) parts.push(`búsqueda “${filters.search.trim()}”`);
-  if (parts.length === 0) return '';
-  return ` (filtrado: ${parts.join(', ')})`;
+  return parts.join(', ');
 }
 
 // --- Trade card --------------------------------------------------------------
@@ -566,20 +588,3 @@ function TradeCard({
   );
 }
 
-function buildText(
-  header: string,
-  buckets: Bucket[],
-  itemLabel: (i: Item) => string,
-  filterSuffix: string,
-): string {
-  if (buckets.length === 0) return `${header}: nada por compartir${filterSuffix}.`;
-  const total = buckets.reduce(
-    (acc, b) => acc + b.items.reduce((a, i) => a + i.count, 0),
-    0,
-  );
-  const lines = [`${header} (${total})${filterSuffix}:`];
-  for (const b of buckets) {
-    lines.push(`${b.code}: ${b.items.map(itemLabel).join(', ')}`);
-  }
-  return lines.join('\n');
-}

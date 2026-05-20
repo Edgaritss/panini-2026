@@ -4,6 +4,7 @@ import { useAlbumStore } from './store/useAlbumStore';
 import { applyPalette, useTheme } from './store/useTheme';
 import { Home } from './pages/Home';
 import { Trades } from './pages/Trades';
+import { Comparar } from './pages/Comparar';
 import { Stats } from './pages/Stats';
 import { Settings } from './pages/Settings';
 import { SectionPage } from './pages/SectionPage';
@@ -55,6 +56,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/album" element={<Home />} />
           <Route path="/cambios" element={<Trades />} />
+          <Route path="/comparar" element={<Comparar />} />
           <Route path="/estadisticas" element={<Stats />} />
           <Route path="/ajustes" element={<Settings />} />
           <Route path="/ajustes/compartir" element={<SharePage />} />
