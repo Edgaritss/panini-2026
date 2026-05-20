@@ -1,7 +1,11 @@
+export type SectionCategory = 'special' | 'sponsor' | 'team';
+
 export interface Section {
   code: string;
   name: string;
   group: string | null;
+  stickerCount: number;
+  category: SectionCategory;
 }
 
 export interface Sticker {
@@ -10,6 +14,7 @@ export interface Sticker {
   sectionCode: string;
   sectionName: string;
   group: string | null;
+  category: SectionCategory;
 }
 
 export type FilterMode = 'all' | 'missing' | 'have' | 'duplicate';

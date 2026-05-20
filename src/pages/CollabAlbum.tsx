@@ -274,7 +274,7 @@ function CollabView({
   const totals = useMemo(() => {
     let count = 0;
     for (const s of sections) {
-      for (let n = 1; n <= 20; n += 1) {
+      for (let n = 1; n <= s.stickerCount; n += 1) {
         if ((owned[`${s.code}${n}`] ?? 0) >= 1) count += 1;
       }
     }
@@ -282,7 +282,7 @@ function CollabView({
   }, [owned]);
 
   const pct = TOTAL === 0 ? 0 : totals / TOTAL;
-  const fwc = sections.find((s) => s.group === null) ?? null;
+  const specialSections = sections.filter((s) => s.group === null);
   const groups = useMemo(() => {
     const indexByCode = new Map<string, number>();
     let i = 0;
@@ -349,11 +349,13 @@ function CollabView({
       </header>
 
       <div className="flex flex-col">
-        {fwc && (
+        {specialSections.length > 0 && (
           <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-            <CardWrapper onClick={() => setOpenSection(fwc.code)}>
-              <CountryCard section={fwc} countsOverride={owned} readOnly />
-            </CardWrapper>
+            {specialSections.map((s) => (
+              <CardWrapper key={s.code} onClick={() => setOpenSection(s.code)}>
+                <CountryCard section={s} countsOverride={owned} readOnly />
+              </CardWrapper>
+            ))}
           </section>
         )}
         {groups.map(({ group, items }) => (
@@ -473,10 +475,10 @@ function CollabSectionDrawer({
               {section.code}
             </p>
             <h2 className="text-heading text-on-surface truncate">
-              {section.code === 'FWC' ? 'FIFA World Cup 2026' : section.name}
+              {section.name}
             </h2>
             <p className="text-small text-on-surface-variant">
-              {ownedCount}/20 estampas
+              {ownedCount}/{section.stickerCount} estampas
             </p>
           </div>
           <button

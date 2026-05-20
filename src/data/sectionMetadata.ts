@@ -14,6 +14,7 @@ export type Continent =
 
 export const sectionContinent: Record<string, Continent> = {
   FWC: 'special',
+  CC: 'special',
 
   // A
   MEX: 'north-america',

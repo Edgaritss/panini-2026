@@ -14,21 +14,32 @@ interface Props {
   resultCount: number;
 }
 
-// Groups derived from the sections data. FWC has group=null and is exposed as
-// a synthetic "Portada" group so the user can include/exclude it explicitly.
-const PORTADA_KEY = '__portada__';
+// Special (group=null) sections each get their own chip; regular sections
+// share a group letter. Keys hold the actual section code (FWC, CC) or the
+// group letter (A..L), so the matcher in Trades.tsx can use code-vs-group
+// branching directly.
 
 function buildGroupOptions(): { key: string; label: string }[] {
-  const seen = new Set<string>();
   const out: { key: string; label: string }[] = [];
+  for (const s of sections) {
+    if (s.group === null) {
+      const label =
+        s.category === 'sponsor'
+          ? `${s.code} (${s.name})`
+          : `${s.code} (Especiales)`;
+      out.push({ key: s.code, label });
+    }
+  }
+  const seen = new Set<string>();
+  const groupLetters: string[] = [];
   for (const s of sections) {
     if (s.group === null) continue;
     if (seen.has(s.group)) continue;
     seen.add(s.group);
-    out.push({ key: s.group, label: `Grupo ${s.group}` });
+    groupLetters.push(s.group);
   }
-  out.sort((a, b) => a.key.localeCompare(b.key));
-  out.push({ key: PORTADA_KEY, label: 'Portada (FWC)' });
+  groupLetters.sort();
+  for (const g of groupLetters) out.push({ key: g, label: `Grupo ${g}` });
   return out;
 }
 
@@ -179,8 +190,6 @@ export function TradesFiltersDrawer({ open, onClose, resultCount }: Props) {
     </div>
   );
 }
-
-export { PORTADA_KEY };
 
 interface ChipProps {
   active: boolean;

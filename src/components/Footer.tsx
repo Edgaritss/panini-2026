@@ -7,11 +7,11 @@ export function Footer() {
   let completed = 0;
   for (const s of sections) {
     let sectOwned = 0;
-    for (let n = 1; n <= 20; n += 1) {
+    for (let n = 1; n <= s.stickerCount; n += 1) {
       if ((counts[`${s.code}${n}`] ?? 0) >= 1) sectOwned += 1;
     }
     owned += sectOwned;
-    if (sectOwned === 20) completed += 1;
+    if (sectOwned === s.stickerCount) completed += 1;
   }
 
   return (

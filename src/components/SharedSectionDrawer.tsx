@@ -42,8 +42,9 @@ export function SharedSectionDrawer({
 
   if (!section) return null;
 
-  const isFWC = section.group === null;
-  const longName = isFWC ? 'FIFA World Cup 2026' : section.name;
+  const isSpecial = section.group === null;
+  const isSponsor = section.category === 'sponsor';
+  const longName = section.name;
   let ownedCount = 0;
   let duplicates = 0;
   for (const st of list) {
@@ -65,12 +66,16 @@ export function SharedSectionDrawer({
       >
         <header className="px-5 py-4 border-b border-outline-variant flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            {isFWC ? (
+            {isSpecial ? (
               <span
                 className="w-8 h-8 rounded-full inline-flex items-center justify-center bg-secondary text-on-secondary shrink-0"
                 aria-hidden
               >
-                <Icon name="emoji_events" filled size={18} />
+                <Icon
+                  name={isSponsor ? 'local_drink' : 'emoji_events'}
+                  filled
+                  size={18}
+                />
               </span>
             ) : (
               <FlagCircle code={section.code} size={32} />
@@ -86,7 +91,7 @@ export function SharedSectionDrawer({
                 {longName}
               </h2>
               <p className="text-small text-on-surface-variant">
-                {ownedCount}/20 estampas
+                {ownedCount}/{section.stickerCount} estampas
                 {duplicates > 0 && (
                   <span className="text-secondary">
                     {' · '}

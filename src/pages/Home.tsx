@@ -23,7 +23,7 @@ export function Home() {
   function sectionCounts(section: Section): Counts {
     let owned = 0;
     let duplicates = 0;
-    for (let n = 1; n <= 20; n += 1) {
+    for (let n = 1; n <= section.stickerCount; n += 1) {
       const c = counts[`${section.code}${n}`] ?? 0;
       if (c >= 1) owned += 1;
       if (c > 1) duplicates += c - 1;
@@ -34,7 +34,7 @@ export function Home() {
   function passesFilter(section: Section): boolean {
     if (filter === 'all') return true;
     const { owned, duplicates } = sectionCounts(section);
-    if (filter === 'missing') return owned < 20;
+    if (filter === 'missing') return owned < section.stickerCount;
     if (filter === 'have') return owned > 0;
     return duplicates > 0;
   }
@@ -51,11 +51,11 @@ export function Home() {
     );
   }
 
-  const { fwc, groups } = useMemo(() => {
+  const { specials, groups } = useMemo(() => {
     const visible = sections.filter((s) => passesSearch(s) && passesFilter(s));
-    const fwc = visible.find((s) => s.group === null) ?? null;
+    const specials = visible.filter((s) => s.group === null);
 
-    // Position index 1..48 across the 48 selections (FWC excluded).
+    // Position index 1..N across the team sections (specials excluded).
     const indexByCode = new Map<string, number>();
     let i = 0;
     for (const s of sections) {
@@ -77,11 +77,11 @@ export function Home() {
         group,
         items: items.map((s) => ({ section: s, index: indexByCode.get(s.code)! })),
       }));
-    return { fwc, groups: ordered };
+    return { specials, groups: ordered };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [counts, filter, search]);
 
-  const nothingMatches = !fwc && groups.length === 0;
+  const nothingMatches = specials.length === 0 && groups.length === 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -97,9 +97,11 @@ export function Home() {
         </div>
       ) : (
         <div className="flex flex-col">
-          {fwc && (
+          {specials.length > 0 && (
             <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              <CountryCard section={fwc} />
+              {specials.map((s) => (
+                <CountryCard key={s.code} section={s} />
+              ))}
             </section>
           )}
           {groups.map(({ group, items }) => (

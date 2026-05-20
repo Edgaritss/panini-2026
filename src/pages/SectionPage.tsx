@@ -67,11 +67,12 @@ export function SectionPage() {
 
   const subtitle =
     section.group === null
-      ? `Portada · ${owned} de ${total} estampas`
+      ? `${section.category === 'sponsor' ? 'Patrocinador' : 'Portada'} · ${owned} de ${total} estampas`
       : `Grupo ${section.group} · ${owned} de ${total} estampas`;
 
-  const longName =
-    section.code === 'FWC' ? 'FIFA World Cup 2026' : section.name;
+  const longName = section.name;
+  const isSpecial = section.group === null;
+  const isSponsor = section.category === 'sponsor';
 
   return (
     <div className="flex flex-col gap-8">
@@ -85,12 +86,12 @@ export function SectionPage() {
 
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div className="flex items-start gap-4 min-w-0">
-          {section.code === 'FWC' ? (
+          {isSpecial ? (
             <span
               aria-hidden
               className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-secondary text-on-secondary inline-flex items-center justify-center shrink-0 shadow-sm"
             >
-              <Icon name="emoji_events" filled size={36} />
+              <Icon name={isSponsor ? 'local_drink' : 'emoji_events'} filled size={36} />
             </span>
           ) : (
             <FlagCircle
@@ -177,7 +178,7 @@ export function SectionPage() {
           <div className="min-w-0">
             <p className="text-caps text-on-surface-variant uppercase">Anterior</p>
             <p className="text-body-strong text-on-surface truncate">
-              {prev.code} · {prev.code === 'FWC' ? 'FIFA World Cup 2026' : prev.name}
+              {prev.code} · {prev.name}
             </p>
           </div>
         </Link>
@@ -188,7 +189,7 @@ export function SectionPage() {
           <div className="min-w-0">
             <p className="text-caps text-on-surface-variant uppercase">Siguiente</p>
             <p className="text-body-strong text-on-surface truncate">
-              {next.code} · {next.code === 'FWC' ? 'FIFA World Cup 2026' : next.name}
+              {next.code} · {next.name}
             </p>
           </div>
           <Icon name="arrow_forward" size={20} className="text-on-surface-variant" />

@@ -6,7 +6,7 @@ import {
   useTradesFilters,
   type TradesStatus,
 } from '../store/useTradesFilters';
-import { sections, stickersBySection } from '../data/album';
+import { sections, stickersBySection, sectionByCode } from '../data/album';
 import {
   continentLabels,
   continentOf,
@@ -14,7 +14,7 @@ import {
 } from '../data/sectionMetadata';
 import type { Sticker } from '../types';
 import { Icon } from '../components/Icon';
-import { TradesFiltersDrawer, PORTADA_KEY } from '../components/TradesFiltersDrawer';
+import { TradesFiltersDrawer } from '../components/TradesFiltersDrawer';
 import { formatTradesList, type FormatBucket } from '../lib/formatTradesList';
 
 type Item = { id: string; label: string; count: number };
@@ -393,7 +393,7 @@ function buildBuckets(
 
   for (const s of sections) {
     // Section-level filters: group, continent, near-complete
-    if (!matchesSectionGroup(s.group, groupSet)) continue;
+    if (!matchesSectionGroup(s.code, s.group, groupSet)) continue;
     if (!matchesSectionContinent(s.code, continentSet)) continue;
     if (status === 'near-complete' && !nearCompleteByCode.get(s.code)) continue;
 
@@ -436,12 +436,23 @@ function buildBuckets(
   };
 }
 
+function labelForGroupKey(key: string): string {
+  // Special sections (FWC, CC) use their section code as the filter key.
+  const sec = sectionByCode.get(key);
+  if (sec) {
+    return sec.category === 'sponsor' ? `${sec.code} (${sec.name})` : `${sec.code}`;
+  }
+  return `Grupo ${key}`;
+}
+
 function matchesSectionGroup(
+  code: string,
   group: string | null,
   selected: Set<string>,
 ): boolean {
   if (selected.size === 0) return true;
-  if (group === null) return selected.has(PORTADA_KEY);
+  // Special sections (group === null) use the section code as their filter key.
+  if (group === null) return selected.has(code);
   return selected.has(group);
 }
 
@@ -497,7 +508,7 @@ function buildActiveChips(filters: FilterParams): ActiveChip[] {
     });
   }
   for (const g of filters.groups) {
-    const label = g === PORTADA_KEY ? 'Portada (FWC)' : `Grupo ${g}`;
+    const label = labelForGroupKey(g);
     chips.push({
       id: `group-${g}`,
       label,
@@ -521,7 +532,7 @@ function buildFilterSuffix(filters: FilterParams): string {
     if (label) parts.push(label);
   }
   for (const g of filters.groups) {
-    parts.push(g === PORTADA_KEY ? 'Portada' : `Grupo ${g}`);
+    parts.push(labelForGroupKey(g));
   }
   for (const c of filters.continents) {
     parts.push(continentLabels[c]);

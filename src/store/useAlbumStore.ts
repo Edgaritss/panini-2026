@@ -6,7 +6,7 @@ import type {
   SyncState,
   Theme,
 } from '../types';
-import { sections } from '../data/album';
+import { sections, TOTAL } from '../data/album';
 import {
   alreadyCelebrated,
   clearAllCelebrated,
@@ -135,7 +135,7 @@ function tally(counts: Record<string, number>): PerSectionTotals {
   let totalOwned = 0;
   for (const s of sections) {
     let n = 0;
-    for (let i = 1; i <= 20; i += 1) {
+    for (let i = 1; i <= s.stickerCount; i += 1) {
       if ((counts[`${s.code}${i}`] ?? 0) >= 1) n += 1;
     }
     perSection.set(s.code, n);
@@ -155,9 +155,10 @@ function processCompletions(
   for (const s of sections) {
     const was = a.perSection.get(s.code) ?? 0;
     const now = b.perSection.get(s.code) ?? 0;
+    const target = s.stickerCount;
     // If a section falls out of "complete", allow it to celebrate again next time.
-    if (was === 20 && now < 20) unmarkCelebrated(s.code);
-    if (was < 20 && now === 20 && !alreadyCelebrated(s.code)) {
+    if (was === target && now < target) unmarkCelebrated(s.code);
+    if (was < target && now === target && !alreadyCelebrated(s.code)) {
       completedNow.push(s.code);
     }
   }
@@ -166,7 +167,7 @@ function processCompletions(
   const last = completedNow[completedNow.length - 1];
   markCelebrated(last);
 
-  const albumFull = b.totalOwned === sections.length * 20;
+  const albumFull = b.totalOwned === TOTAL;
   const previouslyCelebratedAlbum =
     useAlbumStore.getState().fullAlbumCelebratedAt !== null;
   const isFullAlbumMoment = albumFull && !previouslyCelebratedAlbum;

@@ -79,11 +79,11 @@ export function CelebrationOverlay() {
     let completedSections = 0;
     for (const s of sections) {
       let n = 0;
-      for (let i = 1; i <= 20; i += 1) {
+      for (let i = 1; i <= s.stickerCount; i += 1) {
         if ((counts[`${s.code}${i}`] ?? 0) >= 1) n += 1;
       }
       owned += n;
-      if (n === 20) completedSections += 1;
+      if (n === s.stickerCount) completedSections += 1;
     }
     return { owned, completedSections };
     // counts dependency suffices; using stickers length implicit
@@ -110,8 +110,7 @@ export function CelebrationOverlay() {
 
   if (!active || !section) return null;
 
-  const longName =
-    section.code === 'FWC' ? 'FIFA World Cup 2026' : section.name;
+  const longName = section.name;
   const pct = Math.round((totals.owned / TOTAL) * 100);
 
   return (
@@ -143,8 +142,8 @@ export function CelebrationOverlay() {
         </h2>
         <p className="text-body text-on-surface-variant mt-2">
           {isFullAlbum
-            ? 'Has completado las 980 estampas del Mundial 2026.'
-            : 'Acabas de completar las 20 estampas de'}
+            ? `Has completado las ${TOTAL} estampas del Mundial 2026.`
+            : `Acabas de completar las ${section.stickerCount} estampas de`}
         </p>
         {!isFullAlbum && (
           <>

@@ -78,13 +78,13 @@ export function Stats() {
         const pct = total ? secOwned / total : 0;
         perSection.push({
           code: section.code,
-          name: section.code === 'FWC' ? 'FIFA World Cup 2026' : section.name,
+          name: section.name,
           group: section.group,
           owned: secOwned,
           total,
           pct,
         });
-        const groupKey = section.group ?? 'FWC';
+        const groupKey = section.group ?? section.code;
         const cur = groupAcc.get(groupKey) ?? { total: 0, owned: 0 };
         cur.total += total;
         cur.owned += secOwned;
@@ -175,7 +175,7 @@ export function Stats() {
         <KpiCard
           label="Promedio por sección"
           value={`${(avgPct * 100).toFixed(1)}%`}
-          hint="Media entre las 49 selecciones"
+          hint={`Media entre las ${sections.length} secciones`}
         />
         <KpiCard
           label="Secciones completas"

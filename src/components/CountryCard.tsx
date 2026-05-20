@@ -25,15 +25,20 @@ export function CountryCard({
   const storeCounts = useAlbumStore((s) => s.counts);
   const counts = countsOverride ?? storeCounts;
   let owned = 0;
-  for (let n = 1; n <= 20; n += 1) {
+  for (let n = 1; n <= section.stickerCount; n += 1) {
     if ((counts[`${section.code}${n}`] ?? 0) >= 1) owned += 1;
   }
-  const total = 20;
-  const pct = owned / total;
+  const total = section.stickerCount;
+  const pct = total > 0 ? owned / total : 0;
   const status: 'empty' | 'progress' | 'complete' =
     owned === 0 ? 'empty' : owned === total ? 'complete' : 'progress';
-  const isFWC = section.group === null;
-  const longName = isFWC ? 'FIFA World Cup 2026' : section.name;
+  const isSpecial = section.group === null;
+  const isSponsor = section.category === 'sponsor';
+  const cornerLabel = isSpecial
+    ? isSponsor
+      ? 'PATROCINADOR'
+      : 'PORTADA'
+    : undefined;
 
   const interactive = !readOnly || !!onClick;
   const baseClassName = `group relative h-[180px] flex flex-col rounded-xl overflow-hidden transition-all duration-150 text-left ${
@@ -44,7 +49,7 @@ export function CountryCard({
       : `border border-outline-variant bg-surface-container-lowest ${
           interactive ? 'hover:border-on-surface-variant/40' : ''
         }`
-  } ${isFWC ? 'md:col-span-2' : ''}`;
+  } ${isSpecial ? 'md:col-span-2' : ''}`;
 
   const inner = (
     <>
@@ -55,19 +60,27 @@ export function CountryCard({
               #{String(index).padStart(3, '0')}
             </span>
           )}
-          {isFWC && <span className="text-[10px] font-mono text-on-surface-variant/60 tracking-wider">PORTADA</span>}
+          {cornerLabel && (
+            <span className="text-[10px] font-mono text-on-surface-variant/60 tracking-wider">
+              {cornerLabel}
+            </span>
+          )}
           {status === 'complete' && (
             <Icon name="check_circle" filled size={16} className="text-[#15803D] dark:text-[#22c55e]" />
           )}
         </div>
 
         <div className="flex items-center gap-3 mt-2">
-          {isFWC ? (
+          {isSpecial ? (
             <span
               className="w-7 h-7 rounded-full inline-flex items-center justify-center bg-secondary text-on-secondary shrink-0"
               aria-hidden
             >
-              <Icon name="emoji_events" filled size={16} />
+              <Icon
+                name={isSponsor ? 'local_drink' : 'emoji_events'}
+                filled
+                size={16}
+              />
             </span>
           ) : (
             <FlagCircle code={section.code} size={28} />
@@ -78,7 +91,7 @@ export function CountryCard({
         </div>
 
         <p className="text-caps text-on-surface-variant uppercase mt-2 truncate">
-          {longName}
+          {section.name}
         </p>
 
         <div className="mt-auto flex items-center gap-2">

@@ -7,7 +7,7 @@ import { themes, type ThemePalette } from '../lib/themes';
 import { useAuthMode } from '../store/useAuth';
 import { importJSONFile } from '../lib/exportImport';
 import { downloadExcel } from '../lib/exportExcel';
-import { TOTAL, stickers } from '../data/album';
+import { TOTAL, stickers, sections as allSections } from '../data/album';
 import { Icon } from '../components/Icon';
 import { Modal } from '../components/Modal';
 import { Toggle } from '../components/Toggle';
@@ -194,7 +194,7 @@ export function Settings() {
           />
           <ToggleRow
             title="Celebración al completar un país"
-            description="Confeti y trofeo cuando completas las 20 estampas."
+            description="Confeti y trofeo cuando completas todas las estampas de un país."
             checked={celebrationEnabled}
             onChange={toggleCelebration}
             divider
@@ -219,7 +219,7 @@ export function Settings() {
             <div>
               <h4 className="text-body-strong text-on-surface">Mundial '26 Tracker</h4>
               <p className="text-small text-on-surface-variant">
-                {TOTAL} estampas · 49 secciones · Datos guardados localmente.
+                {TOTAL} estampas · {allSections.length} secciones · Datos guardados localmente.
               </p>
             </div>
           </div>

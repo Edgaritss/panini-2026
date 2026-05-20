@@ -4,6 +4,7 @@ import { FloatingTiles } from '../components/landing/FloatingTiles';
 import { DemoMockup } from '../components/landing/DemoMockup';
 import { Icon } from '../components/Icon';
 import { useAuth } from '../store/useAuth';
+import { TOTAL, sections as allSections } from '../data/album';
 
 const heroVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -91,8 +92,8 @@ export function Landing() {
           variants={heroVariants}
           className="text-body sm:text-[18px] md:text-[20px] text-on-surface-variant max-w-2xl mx-auto mt-6"
         >
-          Lleva el control de tus 980 estampas Panini. Empieza ahora mismo,
-          regístrate después si quieres sincronizar entre dispositivos.
+          Lleva el control de tus {TOTAL} estampas Panini. Empieza ahora
+          mismo, regístrate después si quieres sincronizar entre dispositivos.
         </motion.p>
         <motion.div
           custom={3}
@@ -133,9 +134,9 @@ export function Landing() {
           variants={heroVariants}
           className="text-small text-on-surface-variant mt-12 flex items-center justify-center gap-3 flex-wrap"
         >
-          <span>980 estampas</span>
+          <span>{TOTAL} estampas</span>
           <span className="opacity-40">·</span>
-          <span>49 selecciones</span>
+          <span>{allSections.length} secciones</span>
           <span className="opacity-40">·</span>
           <span>12 grupos</span>
         </motion.p>
