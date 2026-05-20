@@ -186,3 +186,18 @@ input[type='search']::-webkit-search-cancel-button {
 .modal-anim {
   animation: modal-in 0.18s ease-out both;
 }
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.drawer-anim {
+  animation: drawer-in 0.22s ease-out both;
+}

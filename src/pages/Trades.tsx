@@ -1,58 +1,99 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAlbumStore } from '../store/useAlbumStore';
+import {
+  NEAR_COMPLETE_THRESHOLD,
+  useTradesFilters,
+  type TradesStatus,
+} from '../store/useTradesFilters';
 import { sections, stickersBySection } from '../data/album';
+import {
+  continentLabels,
+  continentOf,
+  type Continent,
+} from '../data/sectionMetadata';
+import type { Sticker } from '../types';
 import { Icon } from '../components/Icon';
+import { TradesFiltersDrawer, PORTADA_KEY } from '../components/TradesFiltersDrawer';
 
-type Bucket = {
-  code: string;
-  items: { id: string; label: string; count: number }[];
-};
+type Item = { id: string; label: string; count: number };
+type Bucket = { code: string; sectionName: string; items: Item[] };
+
+interface BuiltBuckets {
+  missing: Bucket[];
+  duplicates: Bucket[];
+  totalMissing: number;
+  totalDuplicates: number;
+  /** Sections (codes) that pass the current section-level filter set. */
+  visibleSectionCount: number;
+}
+
+const SEARCH_DEBOUNCE_MS = 200;
+
+const STATUS_OPTIONS: { id: TradesStatus; label: string; icon: string }[] = [
+  { id: 'all', label: 'Todos', icon: 'list' },
+  { id: 'missing', label: 'Solo faltantes', icon: 'remove_circle_outline' },
+  { id: 'duplicates', label: 'Solo repetidas', icon: 'content_copy' },
+  { id: 'near-complete', label: 'Cerca de completar', icon: 'flag' },
+];
 
 export function Trades() {
   const counts = useAlbumStore((s) => s.counts);
-  const [copiedSide, setCopiedSide] = useState<'missing' | 'duplicates' | null>(null);
 
-  const { missing, duplicates, totalMissing, totalDuplicates } = useMemo(() => {
-    const miss: Bucket[] = [];
-    const dup: Bucket[] = [];
-    let tm = 0;
-    let td = 0;
-    for (const s of sections) {
-      const all = stickersBySection.get(s.code) ?? [];
-      const m = all
-        .filter((st) => !(counts[st.id] ?? 0))
-        .map((st) => ({
-          id: st.id,
-          label: `${st.sectionCode}${st.number}`,
-          count: 1,
-        }));
-      const d = all
-        .map((st) => ({
-          id: st.id,
-          label: `${st.sectionCode}${st.number}`,
-          count: Math.max(0, (counts[st.id] ?? 0) - 1),
-        }))
-        .filter((x) => x.count > 0);
-      if (m.length) miss.push({ code: s.code, items: m });
-      if (d.length) dup.push({ code: s.code, items: d });
-      tm += m.length;
-      td += d.reduce((a, x) => a + x.count, 0);
-    }
-    return {
-      missing: miss,
-      duplicates: dup,
-      totalMissing: tm,
-      totalDuplicates: td,
-    };
-  }, [counts]);
+  const search = useTradesFilters((s) => s.search);
+  const status = useTradesFilters((s) => s.status);
+  const groups = useTradesFilters((s) => s.groups);
+  const continents = useTradesFilters((s) => s.continents);
+  const setSearch = useTradesFilters((s) => s.setSearch);
+  const setStatus = useTradesFilters((s) => s.setStatus);
+  const clearAll = useTradesFilters((s) => s.clearAll);
+  const toggleGroup = useTradesFilters((s) => s.toggleGroup);
+  const toggleContinent = useTradesFilters((s) => s.toggleContinent);
+  const activeFiltersCount = useTradesFilters((s) => s.activeFiltersCount());
+  const isAnyFilterActive = useTradesFilters((s) => s.isAnyFilterActive());
+
+  const [inputValue, setInputValue] = useState(search);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [copiedSide, setCopiedSide] = useState<'missing' | 'duplicates' | null>(
+    null,
+  );
+
+  // Debounce search input → store
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setSearch(inputValue);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [inputValue, setSearch]);
+
+  // Keep local input synced when the store is cleared from elsewhere
+  useEffect(() => {
+    if (search === '' && inputValue !== '') setInputValue('');
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const built = useMemo<BuiltBuckets>(
+    () => buildBuckets(counts, { search, status, groups, continents }),
+    [counts, search, status, groups, continents],
+  );
+
+  const showMissingCol = status !== 'duplicates';
+  const showDuplicatesCol = status === 'all' || status === 'duplicates';
+
+  const totalShown =
+    (showMissingCol ? built.totalMissing : 0) +
+    (showDuplicatesCol ? built.totalDuplicates : 0);
 
   async function copy(side: 'missing' | 'duplicates') {
-    const text =
-      side === 'missing'
-        ? buildText('Me faltan', missing, (i) => i.label)
-        : buildText('Tengo repetidas', duplicates, (i) =>
-            i.count > 1 ? `${i.label} x${i.count}` : i.label,
-          );
+    const buckets = side === 'missing' ? built.missing : built.duplicates;
+    const header = side === 'missing' ? 'Me faltan' : 'Tengo repetidas';
+    const renderItem = (i: Item) =>
+      side === 'duplicates' && i.count > 1 ? `${i.label} x${i.count}` : i.label;
+    const filterSuffix = buildFilterSuffix({
+      search,
+      status,
+      groups,
+      continents,
+    });
+    const text = buildText(header, buckets, renderItem, filterSuffix);
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -70,59 +111,399 @@ export function Trades() {
     window.setTimeout(() => setCopiedSide(null), 1500);
   }
 
+  function removeChip(chipKey: ActiveChip['key']) {
+    if (chipKey.kind === 'search') {
+      setInputValue('');
+      setSearch('');
+    } else if (chipKey.kind === 'status') {
+      setStatus('all');
+    } else if (chipKey.kind === 'group') {
+      toggleGroup(chipKey.value);
+    } else if (chipKey.kind === 'continent') {
+      toggleContinent(chipKey.value);
+    }
+  }
+
+  function handleClearAll() {
+    clearAll();
+    setInputValue('');
+  }
+
+  const activeChips = buildActiveChips({ search, status, groups, continents });
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="flex flex-col gap-1">
         <h1 className="text-display-l text-on-surface">Intercambios</h1>
-        <p className="text-body text-on-surface-variant mt-1">
+        <p className="text-body text-on-surface-variant">
           Listo para copiar y compartir.
         </p>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TradeCard
-          title="Me faltan"
-          total={totalMissing}
-          buckets={missing}
-          tone="neutral"
-          renderItem={(item) => (
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant font-mono text-mono-code text-on-surface">
-              {item.label}
+
+      {/* Search + Filters button */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Icon
+            name="search"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+            size={18}
+          />
+          <input
+            type="search"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Buscar código, número o país (ej: MEX5, México, 10)…"
+            aria-label="Buscar estampa"
+            className="w-full h-11 pl-10 pr-3 bg-surface-container rounded-full text-body text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-secondary"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          className="relative inline-flex items-center gap-2 h-11 px-4 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-body-strong"
+        >
+          <Icon name="tune" size={18} />
+          <span className="hidden sm:inline">Filtros</span>
+          {(groups.length > 0 || continents.length > 0) && (
+            <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-secondary text-on-secondary text-caps">
+              {groups.length + continents.length}
             </span>
           )}
-          copyVariant="outline"
-          copied={copiedSide === 'missing'}
-          onCopy={() => copy('missing')}
-          emptyText="¡Tienes todas las estampas! 🎉"
-        />
-        <TradeCard
-          title="Tengo repetidas"
-          total={totalDuplicates}
-          buckets={duplicates}
-          tone="danger"
-          renderItem={(item) => (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-fixed border border-error-container font-mono text-mono-code text-on-error-container">
-              {item.label}
-              {item.count > 1 && (
-                <span className="text-small opacity-80">x{item.count}</span>
-              )}
-            </span>
-          )}
-          copyVariant="filled"
-          copied={copiedSide === 'duplicates'}
-          onCopy={() => copy('duplicates')}
-          emptyText="Aún no tienes repetidas."
-        />
+        </button>
       </div>
+
+      {/* Status chips */}
+      <div className="flex gap-2 overflow-x-auto -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 pb-1">
+        {STATUS_OPTIONS.map((opt) => {
+          const active = status === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setStatus(opt.id)}
+              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full whitespace-nowrap text-body-strong transition-colors ${
+                active
+                  ? 'bg-primary text-on-primary'
+                  : 'bg-surface-container text-on-surface hover:bg-surface-container-high'
+              }`}
+            >
+              <Icon name={opt.icon} size={16} />
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active filter chips */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {activeChips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => removeChip(chip.key)}
+              className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-secondary/10 text-secondary border border-secondary/30 text-small hover:bg-secondary/15 transition-colors"
+            >
+              <span>{chip.label}</span>
+              <Icon name="close" size={14} />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="text-small text-on-surface-variant hover:text-on-surface underline-offset-2 hover:underline ml-1"
+          >
+            Limpiar todos
+          </button>
+        </div>
+      )}
+
+      {/* Result counter */}
+      <ResultCounter
+        totalShown={totalShown}
+        isFiltered={isAnyFilterActive}
+        activeFiltersCount={activeFiltersCount}
+      />
+
+      {/* Two columns */}
+      <div
+        className={`grid grid-cols-1 ${
+          showMissingCol && showDuplicatesCol ? 'lg:grid-cols-2' : ''
+        } gap-6`}
+      >
+        {showMissingCol && (
+          <TradeCard
+            title="Me faltan"
+            total={built.totalMissing}
+            buckets={built.missing}
+            tone="neutral"
+            renderItem={(item) => (
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant font-mono text-mono-code text-on-surface">
+                {item.label}
+              </span>
+            )}
+            copyVariant="outline"
+            copied={copiedSide === 'missing'}
+            onCopy={() => copy('missing')}
+            emptyText={
+              isAnyFilterActive
+                ? 'Ninguna estampa faltante coincide con los filtros.'
+                : '¡Tienes todas las estampas! 🎉'
+            }
+          />
+        )}
+        {showDuplicatesCol && (
+          <TradeCard
+            title="Tengo repetidas"
+            total={built.totalDuplicates}
+            buckets={built.duplicates}
+            tone="danger"
+            renderItem={(item) => (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-fixed border border-error-container font-mono text-mono-code text-on-error-container">
+                {item.label}
+                {item.count > 1 && (
+                  <span className="text-small opacity-80">x{item.count}</span>
+                )}
+              </span>
+            )}
+            copyVariant="filled"
+            copied={copiedSide === 'duplicates'}
+            onCopy={() => copy('duplicates')}
+            emptyText={
+              isAnyFilterActive
+                ? 'Ninguna repetida coincide con los filtros.'
+                : 'Aún no tienes repetidas.'
+            }
+          />
+        )}
+      </div>
+
+      <TradesFiltersDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        resultCount={totalShown}
+      />
     </div>
   );
 }
+
+interface ResultCounterProps {
+  totalShown: number;
+  isFiltered: boolean;
+  activeFiltersCount: number;
+}
+
+function ResultCounter({
+  totalShown,
+  isFiltered,
+  activeFiltersCount,
+}: ResultCounterProps) {
+  if (!isFiltered) {
+    return (
+      <p className="text-small text-on-surface-variant">
+        {totalShown} {totalShown === 1 ? 'estampa pendiente' : 'estampas pendientes'}
+      </p>
+    );
+  }
+  return (
+    <p className="text-small text-on-surface-variant">
+      <span className="text-on-surface font-body-strong">{totalShown}</span>{' '}
+      {totalShown === 1 ? 'estampa' : 'estampas'} con{' '}
+      {activeFiltersCount} filtro{activeFiltersCount === 1 ? '' : 's'} activo
+      {activeFiltersCount === 1 ? '' : 's'}.
+    </p>
+  );
+}
+
+// --- Filtering ---------------------------------------------------------------
+
+interface FilterParams {
+  search: string;
+  status: TradesStatus;
+  groups: string[];
+  continents: Continent[];
+}
+
+function buildBuckets(
+  counts: Record<string, number>,
+  filters: FilterParams,
+): BuiltBuckets {
+  const { search, status, groups, continents } = filters;
+  const searchQ = search.trim().toLowerCase();
+  const searchNum = searchQ.length > 0 ? Number.parseInt(searchQ, 10) : NaN;
+  const groupSet = new Set(groups);
+  const continentSet = new Set(continents);
+
+  // Precompute per-section "near-complete" eligibility based on missing count
+  // (only meaningful when status === 'near-complete').
+  const nearCompleteByCode = new Map<string, boolean>();
+  if (status === 'near-complete') {
+    for (const s of sections) {
+      const all = stickersBySection.get(s.code) ?? [];
+      let missingHere = 0;
+      for (const st of all) {
+        if ((counts[st.id] ?? 0) === 0) missingHere += 1;
+      }
+      const eligible = missingHere > 0 && missingHere <= NEAR_COMPLETE_THRESHOLD;
+      nearCompleteByCode.set(s.code, eligible);
+    }
+  }
+
+  const missing: Bucket[] = [];
+  const duplicates: Bucket[] = [];
+  let tm = 0;
+  let td = 0;
+  let visibleSectionCount = 0;
+
+  for (const s of sections) {
+    // Section-level filters: group, continent, near-complete
+    if (!matchesSectionGroup(s.code, s.group, groupSet)) continue;
+    if (!matchesSectionContinent(s.code, continentSet)) continue;
+    if (status === 'near-complete' && !nearCompleteByCode.get(s.code)) continue;
+
+    visibleSectionCount += 1;
+
+    const all = stickersBySection.get(s.code) ?? [];
+
+    const miss: Item[] = [];
+    const dup: Item[] = [];
+    for (const st of all) {
+      if (!matchesSearch(st, searchQ, searchNum)) continue;
+      const owned = counts[st.id] ?? 0;
+      if (owned === 0) {
+        miss.push({ id: st.id, label: `${st.sectionCode}${st.number}`, count: 1 });
+      } else if (owned >= 2) {
+        dup.push({
+          id: st.id,
+          label: `${st.sectionCode}${st.number}`,
+          count: owned - 1,
+        });
+      }
+    }
+
+    if (miss.length > 0) {
+      missing.push({ code: s.code, sectionName: s.name, items: miss });
+      tm += miss.length;
+    }
+    if (dup.length > 0) {
+      duplicates.push({ code: s.code, sectionName: s.name, items: dup });
+      td += dup.reduce((acc, x) => acc + x.count, 0);
+    }
+  }
+
+  return {
+    missing,
+    duplicates,
+    totalMissing: tm,
+    totalDuplicates: td,
+    visibleSectionCount,
+  };
+}
+
+function matchesSectionGroup(
+  code: string,
+  group: string | null,
+  selected: Set<string>,
+): boolean {
+  if (selected.size === 0) return true;
+  if (group === null) return selected.has(PORTADA_KEY);
+  return selected.has(group);
+}
+
+function matchesSectionContinent(
+  code: string,
+  selected: Set<Continent>,
+): boolean {
+  if (selected.size === 0) return true;
+  return selected.has(continentOf(code));
+}
+
+function matchesSearch(
+  st: Sticker,
+  q: string,
+  numQ: number,
+): boolean {
+  if (!q) return true;
+  if (st.id.toLowerCase().includes(q)) return true;
+  if (st.sectionCode.toLowerCase().includes(q)) return true;
+  if (st.sectionName.toLowerCase().includes(q)) return true;
+  if (!Number.isNaN(numQ) && st.number === numQ) return true;
+  return false;
+}
+
+// --- Active chips ------------------------------------------------------------
+
+type ActiveChip = {
+  id: string;
+  label: string;
+  key:
+    | { kind: 'search' }
+    | { kind: 'status' }
+    | { kind: 'group'; value: string }
+    | { kind: 'continent'; value: Continent };
+};
+
+function buildActiveChips(filters: FilterParams): ActiveChip[] {
+  const chips: ActiveChip[] = [];
+  if (filters.search.trim()) {
+    chips.push({
+      id: 'search',
+      label: `“${filters.search.trim()}”`,
+      key: { kind: 'search' },
+    });
+  }
+  if (filters.status !== 'all') {
+    const label =
+      STATUS_OPTIONS.find((s) => s.id === filters.status)?.label ?? filters.status;
+    chips.push({
+      id: `status-${filters.status}`,
+      label,
+      key: { kind: 'status' },
+    });
+  }
+  for (const g of filters.groups) {
+    const label = g === PORTADA_KEY ? 'Portada (FWC)' : `Grupo ${g}`;
+    chips.push({
+      id: `group-${g}`,
+      label,
+      key: { kind: 'group', value: g },
+    });
+  }
+  for (const c of filters.continents) {
+    chips.push({
+      id: `continent-${c}`,
+      label: continentLabels[c],
+      key: { kind: 'continent', value: c },
+    });
+  }
+  return chips;
+}
+
+function buildFilterSuffix(filters: FilterParams): string {
+  const parts: string[] = [];
+  if (filters.status !== 'all') {
+    const label = STATUS_OPTIONS.find((s) => s.id === filters.status)?.label;
+    if (label) parts.push(label);
+  }
+  for (const g of filters.groups) {
+    parts.push(g === PORTADA_KEY ? 'Portada' : `Grupo ${g}`);
+  }
+  for (const c of filters.continents) {
+    parts.push(continentLabels[c]);
+  }
+  if (filters.search.trim()) parts.push(`búsqueda “${filters.search.trim()}”`);
+  if (parts.length === 0) return '';
+  return ` (filtrado: ${parts.join(', ')})`;
+}
+
+// --- Trade card --------------------------------------------------------------
 
 interface TradeCardProps {
   title: string;
   total: number;
   buckets: Bucket[];
   tone: 'neutral' | 'danger';
-  renderItem: (item: Bucket['items'][number]) => React.ReactNode;
+  renderItem: (item: Item) => React.ReactNode;
   copyVariant: 'outline' | 'filled';
   copied: boolean;
   onCopy: () => void;
@@ -189,14 +570,15 @@ function TradeCard({
 function buildText(
   header: string,
   buckets: Bucket[],
-  itemLabel: (i: Bucket['items'][number]) => string,
+  itemLabel: (i: Item) => string,
+  filterSuffix: string,
 ): string {
-  if (buckets.length === 0) return `${header}: nada por compartir.`;
+  if (buckets.length === 0) return `${header}: nada por compartir${filterSuffix}.`;
   const total = buckets.reduce(
     (acc, b) => acc + b.items.reduce((a, i) => a + i.count, 0),
     0,
   );
-  const lines = [`${header} (${total}):`];
+  const lines = [`${header} (${total})${filterSuffix}:`];
   for (const b of buckets) {
     lines.push(`${b.code}: ${b.items.map(itemLabel).join(', ')}`);
   }
