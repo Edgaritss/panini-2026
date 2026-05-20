@@ -125,8 +125,10 @@ a {
   touch-action: manipulation;
 }
 
-input[type='search']::-webkit-search-cancel-button {
-  cursor: pointer;
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .material-symbols-outlined {

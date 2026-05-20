@@ -175,8 +175,19 @@ export function SharedTradeModal({ kind, owned, ownerLabel, onClose }: Props) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar código o país…"
-              className="w-full h-10 pl-10 pr-3 rounded-full bg-surface-container border border-outline-variant text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+              aria-label="Buscar código o país"
+              className="w-full h-10 pl-10 pr-10 rounded-full bg-surface-container border border-outline-variant text-body text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
             />
+            {search.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Borrar búsqueda"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
+              >
+                <Icon name="close" size={16} />
+              </button>
+            )}
           </div>
           <div className="flex gap-2 overflow-x-auto -mx-5 md:-mx-6 px-5 md:px-6 pb-1">
             {GROUP_CHIPS.map((g) => {

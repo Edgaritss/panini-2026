@@ -50,9 +50,19 @@ export function Filters() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar sección…"
-            className="w-full h-10 pl-10 pr-3 bg-surface-container rounded-full text-body text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-secondary"
+            className="w-full h-10 pl-10 pr-10 bg-surface-container rounded-full text-body text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-secondary"
             aria-label="Buscar sección"
           />
+          {search.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Borrar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
+            >
+              <Icon name="close" size={16} />
+            </button>
+          )}
         </div>
         <button
           type="button"
