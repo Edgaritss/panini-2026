@@ -3,7 +3,6 @@ import { sections } from '../data/album';
 import {
   continentLabels,
   continentOrder,
-  type Continent,
 } from '../data/sectionMetadata';
 import { useTradesFilters } from '../store/useTradesFilters';
 import { Icon } from './Icon';

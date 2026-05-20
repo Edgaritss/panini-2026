@@ -357,7 +357,7 @@ function buildBuckets(
 
   for (const s of sections) {
     // Section-level filters: group, continent, near-complete
-    if (!matchesSectionGroup(s.code, s.group, groupSet)) continue;
+    if (!matchesSectionGroup(s.group, groupSet)) continue;
     if (!matchesSectionContinent(s.code, continentSet)) continue;
     if (status === 'near-complete' && !nearCompleteByCode.get(s.code)) continue;
 
@@ -401,7 +401,6 @@ function buildBuckets(
 }
 
 function matchesSectionGroup(
-  code: string,
   group: string | null,
   selected: Set<string>,
 ): boolean {
