@@ -18,6 +18,18 @@ export interface Sticker {
 }
 
 export type FilterMode = 'all' | 'missing' | 'have' | 'duplicate';
+
+export type ActivityAction = 'add' | 'remove' | 'import';
+
+export interface ActivityEntry {
+  /** Sticker id (e.g. MEX10) or "__IMPORT__" for bulk imports. */
+  stickerId: string;
+  action: ActivityAction;
+  /** ISO 8601 timestamp (client clock). */
+  timestamp: string;
+  /** For 'add'/'remove': count after the change. For 'import': total imported. */
+  count?: number;
+}
 export type Theme = 'light' | 'dark' | 'auto';
 
 export interface QuickAddNotice {

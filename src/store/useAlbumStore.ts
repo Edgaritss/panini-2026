@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 import { persist, type PersistOptions } from 'zustand/middleware';
 import type {
+  ActivityEntry,
   FilterMode,
   QuickAddNotice,
   SyncState,
   Theme,
 } from '../types';
 import { sections, TOTAL } from '../data/album';
+import {
+  addActivityEntry,
+  addBulkAddEntries,
+  IMPORT_STICKER_ID,
+} from '../lib/recordActivity';
 import {
   alreadyCelebrated,
   clearAllCelebrated,
@@ -32,6 +38,7 @@ function dispatchStickerEvent(id: string, event: StickerEvent, delay = 0): void 
 
 interface AlbumState {
   counts: Record<string, number>;
+  recentActivity: ActivityEntry[];
   theme: Theme;
   filter: FilterMode;
   search: string;
@@ -50,6 +57,7 @@ interface AlbumState {
   dismissNotice: () => void;
   reset: () => void;
   importData: (counts: Record<string, number>) => void;
+  clearActivity: () => void;
 
   setTheme: (theme: Theme) => void;
   setFilter: (filter: FilterMode) => void;
@@ -61,6 +69,7 @@ interface AlbumState {
   setSync: (patch: Partial<SyncState>) => void;
   hydrateFromRemote: (data: {
     counts: Record<string, number>;
+    recentActivity: ActivityEntry[];
     firstAddedAt: number | null;
     fullAlbumCelebratedAt: number | null;
     remoteUpdatedAt: number;
@@ -72,6 +81,7 @@ interface AlbumState {
 type Persisted = Pick<
   AlbumState,
   | 'counts'
+  | 'recentActivity'
   | 'theme'
   | 'filter'
   | 'openSections'
@@ -83,9 +93,10 @@ type Persisted = Pick<
 
 const persistOptions: PersistOptions<AlbumState, Persisted> = {
   name: 'panini-2026-album',
-  version: 5,
+  version: 6,
   partialize: (state) => ({
     counts: state.counts,
+    recentActivity: state.recentActivity,
     theme: state.theme,
     filter: state.filter,
     openSections: state.openSections,
@@ -108,6 +119,9 @@ const persistOptions: PersistOptions<AlbumState, Persisted> = {
     }
     if (version < 5) {
       if (s.lastAuthedUserId === undefined) s.lastAuthedUserId = null;
+    }
+    if (version < 6) {
+      if (s.recentActivity === undefined) s.recentActivity = [];
     }
     return s as Persisted;
   },
@@ -195,6 +209,7 @@ export const useAlbumStore = create<AlbumState>()(
   persist(
     (set, get) => ({
       counts: {},
+      recentActivity: [],
       theme: 'auto',
       filter: 'all',
       search: '',
@@ -210,7 +225,16 @@ export const useAlbumStore = create<AlbumState>()(
         const before = get().counts;
         set((state) => {
           const counts = { ...state.counts, [id]: (state.counts[id] ?? 0) + 1 };
-          return { counts, ...withFirstAdded(state, counts) };
+          return {
+            counts,
+            ...withFirstAdded(state, counts),
+            recentActivity: addActivityEntry({
+              current: state.recentActivity,
+              stickerId: id,
+              action: 'add',
+              count: counts[id],
+            }),
+          };
         });
         const prev = before[id] ?? 0;
         dispatchStickerEvent(id, prev === 0 ? 'stick' : 'duplicate');
@@ -224,7 +248,16 @@ export const useAlbumStore = create<AlbumState>()(
           const counts = { ...state.counts };
           if (current - 1 === 0) delete counts[id];
           else counts[id] = current - 1;
-          return { counts, localUpdatedAt: Date.now() };
+          return {
+            counts,
+            localUpdatedAt: Date.now(),
+            recentActivity: addActivityEntry({
+              current: state.recentActivity,
+              stickerId: id,
+              action: 'remove',
+              count: counts[id] ?? 0,
+            }),
+          };
         });
         // Pass silent=true: a decrement never triggers a celebration,
         // but we still want to clear the "celebrated" flag if a section
@@ -240,7 +273,22 @@ export const useAlbumStore = create<AlbumState>()(
           const counts = { ...state.counts };
           if (count <= 0) delete counts[id];
           else counts[id] = Math.floor(count);
-          return { counts, ...withFirstAdded(state, counts) };
+          const prevC = state.counts[id] ?? 0;
+          const newC = counts[id] ?? 0;
+          let activity = state.recentActivity;
+          if (newC !== prevC) {
+            activity = addActivityEntry({
+              current: activity,
+              stickerId: id,
+              action: newC > prevC ? 'add' : 'remove',
+              count: newC,
+            });
+          }
+          return {
+            counts,
+            ...withFirstAdded(state, counts),
+            recentActivity: activity,
+          };
         });
         const prev = before[id] ?? 0;
         const now = get().counts[id] ?? 0;
@@ -258,6 +306,7 @@ export const useAlbumStore = create<AlbumState>()(
           return {
             counts,
             ...withFirstAdded(state, counts),
+            recentActivity: addBulkAddEntries(state.recentActivity, ids, counts),
             notice: silent
               ? state.notice
               : {
@@ -287,6 +336,7 @@ export const useAlbumStore = create<AlbumState>()(
         clearAllCelebrated();
         set({
           counts: {},
+          recentActivity: [],
           notice: null,
           firstAddedAt: null,
           fullAlbumCelebratedAt: null,
@@ -294,11 +344,25 @@ export const useAlbumStore = create<AlbumState>()(
         });
       },
       importData: (counts) =>
-        set((state) => ({
-          counts,
-          notice: null,
-          ...withFirstAdded(state, counts),
-        })),
+        set((state) => {
+          const importedTotal = Object.values(counts).reduce(
+            (a, c) => a + (c > 0 ? 1 : 0),
+            0,
+          );
+          return {
+            counts,
+            notice: null,
+            ...withFirstAdded(state, counts),
+            recentActivity: addActivityEntry({
+              current: state.recentActivity,
+              stickerId: IMPORT_STICKER_ID,
+              action: 'import',
+              count: importedTotal,
+            }),
+          };
+        }),
+      clearActivity: () =>
+        set({ recentActivity: [], localUpdatedAt: Date.now() }),
 
       setTheme: (theme) => set({ theme }),
       setFilter: (filter) => set({ filter }),
@@ -317,6 +381,7 @@ export const useAlbumStore = create<AlbumState>()(
         set((state) => ({ sync: { ...state.sync, ...patch } })),
       hydrateFromRemote: ({
         counts,
+        recentActivity,
         firstAddedAt,
         fullAlbumCelebratedAt,
         remoteUpdatedAt,
@@ -324,6 +389,7 @@ export const useAlbumStore = create<AlbumState>()(
       }) =>
         set((state) => ({
           counts,
+          recentActivity,
           firstAddedAt,
           fullAlbumCelebratedAt,
           localUpdatedAt: remoteUpdatedAt,

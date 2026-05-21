@@ -6,6 +6,7 @@ import { Filters } from '../components/Filters';
 import { CountryCard } from '../components/CountryCard';
 import { GroupHeader } from '../components/GroupHeader';
 import { EmptyBanner } from '../components/EmptyBanner';
+import { MiniActivityWidget } from '../components/MiniActivityWidget';
 import type { Section } from '../types';
 
 interface Counts {
@@ -87,6 +88,7 @@ export function Home() {
     <div className="flex flex-col gap-8">
       <ProgressBar />
       {isEmpty && <EmptyBanner />}
+      <MiniActivityWidget />
       <Filters />
 
       {nothingMatches ? (

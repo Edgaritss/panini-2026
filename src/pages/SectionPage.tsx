@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { sections, stickersBySection } from '../data/album';
 import { useAlbumStore } from '../store/useAlbumStore';
 import { useAnimations } from '../store/useAnimations';
@@ -13,8 +13,20 @@ type Mode = 'grid' | 'cards';
 
 export function SectionPage() {
   const { code } = useParams<{ code: string }>();
+  const location = useLocation();
   const counts = useAlbumStore((s) => s.counts);
   const [mode, setMode] = useState<Mode>('grid');
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Highlight signal from /actividad navigation.
+  useEffect(() => {
+    const state = location.state as { highlight?: string } | null;
+    const id = state?.highlight;
+    if (!id) return;
+    setHighlightId(id);
+    const t = window.setTimeout(() => setHighlightId(null), 2200);
+    return () => window.clearTimeout(t);
+  }, [location.key, location.state]);
 
   const idx = sections.findIndex((s) => s.code === code);
   const section = idx >= 0 ? sections[idx] : null;
@@ -147,24 +159,36 @@ export function SectionPage() {
       {mode === 'grid' ? (
         <section className="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm p-4 md:p-6 grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-gutter">
           {stickers.map((st, i) => (
-            <StickerCell
+            <div
               key={st.id}
-              stickerId={st.id}
-              number={st.number}
-              sectionCode={st.sectionCode}
-              vibrating={vibrating.has(i)}
-            />
+              className={
+                highlightId === st.id ? 'sticker-highlight rounded-md' : ''
+              }
+            >
+              <StickerCell
+                stickerId={st.id}
+                number={st.number}
+                sectionCode={st.sectionCode}
+                vibrating={vibrating.has(i)}
+              />
+            </div>
           ))}
         </section>
       ) : (
         <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {stickers.map((st) => (
-            <StickerCard
+            <div
               key={st.id}
-              stickerId={st.id}
-              number={st.number}
-              sectionCode={st.sectionCode}
-            />
+              className={
+                highlightId === st.id ? 'sticker-highlight rounded-md' : ''
+              }
+            >
+              <StickerCard
+                stickerId={st.id}
+                number={st.number}
+                sectionCode={st.sectionCode}
+              />
+            </div>
           ))}
         </section>
       )}

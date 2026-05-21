@@ -18,6 +18,7 @@ export const supabase: SupabaseClient | null = supabaseConfigured
 export interface UserCollectionRow {
   user_id: string;
   owned: Record<string, number>;
+  recent_activity?: import('../types').ActivityEntry[] | null;
   first_added_at: string | null;
   full_album_celebrated_at: string | null;
   created_at: string;

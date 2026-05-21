@@ -27,6 +27,7 @@ export async function initSync(): Promise<void> {
   useAlbumStore.subscribe((state, prev) => {
     if (
       state.counts === prev.counts &&
+      state.recentActivity === prev.recentActivity &&
       state.firstAddedAt === prev.firstAddedAt &&
       state.fullAlbumCelebratedAt === prev.fullAlbumCelebratedAt
     ) {
@@ -110,13 +111,26 @@ async function handleUserChange(userId: string | null): Promise<void> {
 async function hydrate(userId: string): Promise<void> {
   if (!supabase) return;
   setStatus({ status: 'initializing' });
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('user_collections')
     .select(
-      'user_id, owned, first_added_at, full_album_celebrated_at, created_at, updated_at',
+      'user_id, owned, recent_activity, first_added_at, full_album_celebrated_at, created_at, updated_at',
     )
     .eq('user_id', userId)
     .maybeSingle<UserCollectionRow>();
+
+  // Fallback for pre-migration databases without recent_activity column.
+  if (error && /recent_activity/.test(error.message)) {
+    const retry = await supabase
+      .from('user_collections')
+      .select(
+        'user_id, owned, first_added_at, full_album_celebrated_at, created_at, updated_at',
+      )
+      .eq('user_id', userId)
+      .maybeSingle<UserCollectionRow>();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     setStatus({ status: 'error', lastError: error.message });
@@ -139,6 +153,7 @@ async function hydrate(userId: string): Promise<void> {
     : null;
   useAlbumStore.getState().hydrateFromRemote({
     counts: data.owned ?? {},
+    recentActivity: Array.isArray(data.recent_activity) ? data.recent_activity : [],
     firstAddedAt: remoteFirstAdded,
     fullAlbumCelebratedAt: remoteFullCelebrated,
     remoteUpdatedAt,
@@ -179,17 +194,36 @@ export async function saveNow(): Promise<void> {
     ? new Date(state.fullAlbumCelebratedAt).toISOString()
     : null;
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from('user_collections')
     .upsert(
       {
         user_id: userId,
         owned: state.counts,
+        recent_activity: state.recentActivity,
         first_added_at: firstAddedAt,
         full_album_celebrated_at: fullAlbumCelebratedAt,
       },
       { onConflict: 'user_id' },
     );
+
+  // Graceful fallback if the `recent_activity` column hasn't been migrated yet:
+  // retry without it so the rest keeps syncing. Once the SQL migration is
+  // applied, this branch stops firing.
+  if (error && /recent_activity/.test(error.message)) {
+    const retry = await supabase
+      .from('user_collections')
+      .upsert(
+        {
+          user_id: userId,
+          owned: state.counts,
+          first_added_at: firstAddedAt,
+          full_album_celebrated_at: fullAlbumCelebratedAt,
+        },
+        { onConflict: 'user_id' },
+      );
+    error = retry.error;
+  }
 
   pushing = false;
 

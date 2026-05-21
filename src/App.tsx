@@ -6,6 +6,7 @@ import { Home } from './pages/Home';
 import { Trades } from './pages/Trades';
 import { Comparar } from './pages/Comparar';
 import { Stats } from './pages/Stats';
+import { Actividad } from './pages/Actividad';
 import { Settings } from './pages/Settings';
 import { SectionPage } from './pages/SectionPage';
 import { SharePage } from './pages/SharePage';
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/cambios" element={<Trades />} />
           <Route path="/comparar" element={<Comparar />} />
           <Route path="/estadisticas" element={<Stats />} />
+          <Route path="/actividad" element={<Actividad />} />
           <Route path="/ajustes" element={<Settings />} />
           <Route path="/ajustes/compartir" element={<SharePage />} />
           <Route path="/seccion/:code" element={<SectionPage />} />

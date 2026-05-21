@@ -12,6 +12,7 @@ import {
 import { sections, stickersBySection, TOTAL } from '../data/album';
 import { useAlbumStore } from '../store/useAlbumStore';
 import { Icon } from '../components/Icon';
+import { RecentActivityCard } from '../components/RecentActivityCard';
 
 interface SectionStat {
   code: string;
@@ -183,6 +184,8 @@ export function Stats() {
           hint={completed === perSection.length ? '¡Álbum completo!' : 'Sigue así'}
         />
       </section>
+
+      <RecentActivityCard />
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card title="Más completas" caption="Top 5">
